@@ -323,7 +323,7 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtu3_ep *mep = to_mtu3_ep(ep);
 	struct mtu3_request *mreq = to_mtu3_request(req);
-	struct mtu3_request *r;
+	struct mtu3_request *r = NULL, *iter;
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 	int ret = 0;
@@ -336,11 +336,13 @@ static int mtu3_gadget_dequeue(struct usb_ep *ep, struct usb_request *req)
 
 	spin_lock_irqsave(&mtu->lock, flags);
 
-	list_for_each_entry(r, &mep->req_list, list) {
-		if (r == mreq)
-			break;
+	list_for_each_entry(iter, &mep->req_list, list) {
+		if (iter != mreq)
+			continue;
+		r = iter;
+		break;
 	}
-	if (r != mreq) {
+	if (!r) {
 		dev_dbg(mtu->dev, "req=%p not queued to %s\n", req, ep->name);
 		ret = -EINVAL;
 		goto done;
