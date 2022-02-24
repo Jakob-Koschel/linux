@@ -491,22 +491,23 @@ static void sgx_mmu_notifier_release(struct mmu_notifier *mn,
 				     struct mm_struct *mm)
 {
 	struct sgx_encl_mm *encl_mm = container_of(mn, struct sgx_encl_mm, mmu_notifier);
-	struct sgx_encl_mm *tmp = NULL;
+	struct sgx_encl_mm *tmp = NULL, *iter;
 
 	/*
 	 * The enclave itself can remove encl_mm.  Note, objects can't be moved
 	 * off an RCU protected list, but deletion is ok.
 	 */
 	spin_lock(&encl_mm->encl->mm_lock);
-	list_for_each_entry(tmp, &encl_mm->encl->mm_list, list) {
-		if (tmp == encl_mm) {
+	list_for_each_entry(iter, &encl_mm->encl->mm_list, list) {
+		if (iter == encl_mm) {
 			list_del_rcu(&encl_mm->list);
+			tmp = iter;
 			break;
 		}
 	}
 	spin_unlock(&encl_mm->encl->mm_lock);
 
-	if (tmp == encl_mm) {
+	if (tmp) {
 		synchronize_srcu(&encl_mm->encl->srcu);
 		mmu_notifier_put(mn);
 	}
