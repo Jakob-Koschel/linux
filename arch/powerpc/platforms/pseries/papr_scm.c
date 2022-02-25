@@ -1168,9 +1168,8 @@ static int handle_mce_ue(struct notifier_block *nb, unsigned long val,
 			 void *data)
 {
 	struct machine_check_event *evt = data;
-	struct papr_scm_priv *p;
+	struct papr_scm_priv *p = NULL, *iter;
 	u64 phys_addr;
-	bool found = false;
 
 	if (evt->error_type != MCE_ERROR_TYPE_UE)
 		return NOTIFY_DONE;
@@ -1191,19 +1190,19 @@ static int handle_mce_ue(struct notifier_block *nb, unsigned long val,
 
 	/* mce notifier is called from a process context, so mutex is safe */
 	mutex_lock(&papr_ndr_lock);
-	list_for_each_entry(p, &papr_nd_regions, region_list) {
-		if (phys_addr >= p->res.start && phys_addr <= p->res.end) {
-			found = true;
+	list_for_each_entry(iter, &papr_nd_regions, region_list) {
+		if (phys_addr >= iter->res.start && phys_addr <= iter->res.end) {
+			p = iter;
 			break;
 		}
 	}
 
-	if (found)
+	if (p)
 		papr_scm_add_badblock(p->region, p->bus, phys_addr);
 
 	mutex_unlock(&papr_ndr_lock);
 
-	return found ? NOTIFY_OK : NOTIFY_DONE;
+	return p ? NOTIFY_OK : NOTIFY_DONE;
 }
 
 static struct notifier_block mce_ue_nb = {
