@@ -86,20 +86,20 @@ static void real_iounmap(volatile void __iomem *addr)
 void __iomem *ioremap(phys_addr_t offset, size_t size)
 {
 	void __iomem *ret = NULL;
-	struct logic_iomem_region *rreg, *found = NULL;
+	struct logic_iomem_region *rreg = NULL, *iter;
 	int i;
 
 	mutex_lock(&regions_mtx);
-	list_for_each_entry(rreg, &regions_list, list) {
-		if (rreg->res->start > offset)
+	list_for_each_entry(iter, &regions_list, list) {
+		if (iter->res->start > offset)
 			continue;
-		if (rreg->res->end < offset + size - 1)
+		if (iter->res->end < offset + size - 1)
 			continue;
-		found = rreg;
+		rreg = iter;
 		break;
 	}
 
-	if (!found)
+	if (!rreg)
 		goto out;
 
 	for (i = 0; i < MAX_AREAS; i++) {
@@ -108,7 +108,7 @@ void __iomem *ioremap(phys_addr_t offset, size_t size)
 		if (mapped_areas[i].ops)
 			continue;
 
-		offs = rreg->ops->map(offset - found->res->start,
+		offs = rreg->ops->map(offset - rreg->res->start,
 				      size, &mapped_areas[i].ops,
 				      &mapped_areas[i].priv);
 		if (offs < 0) {
