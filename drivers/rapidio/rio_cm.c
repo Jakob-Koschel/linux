@@ -1074,8 +1074,7 @@ static struct rio_channel *riocm_ch_accept(u16 ch_id, u16 *new_ch_id,
 	struct rio_channel *ch;
 	struct rio_channel *new_ch;
 	struct conn_req *req;
-	struct cm_peer *peer;
-	int found = 0;
+	struct cm_peer *peer = NULL, *iter;
 	int err = 0;
 	long wret;
 
@@ -1151,17 +1150,17 @@ static struct rio_channel *riocm_ch_accept(u16 ch_id, u16 *new_ch_id,
 
 	down_read(&rdev_sem);
 	/* Find requester's device object */
-	list_for_each_entry(peer, &new_ch->cmdev->peers, node) {
-		if (peer->rdev->destid == new_ch->rem_destid) {
+	list_for_each_entry(iter, &new_ch->cmdev->peers, node) {
+		if (iter->rdev->destid == new_ch->rem_destid) {
 			riocm_debug(RX_CMD, "found matching device(%s)",
-				    rio_name(peer->rdev));
-			found = 1;
+				    rio_name(iter->rdev));
+			peer = iter;
 			break;
 		}
 	}
 	up_read(&rdev_sem);
 
-	if (!found) {
+	if (!peer) {
 		/* If peer device object not found, simply ignore the request */
 		err = -ENODEV;
 		goto err_put_new_ch;
@@ -1991,11 +1990,10 @@ found:
 static void riocm_remove_dev(struct device *dev, struct subsys_interface *sif)
 {
 	struct rio_dev *rdev = to_rio_dev(dev);
-	struct cm_dev *cm;
-	struct cm_peer *peer;
+	struct cm_dev *cm = NULL, *cm_iter;
+	struct cm_peer *peer = NULL, *peer_iter;
 	struct rio_channel *ch, *_c;
 	unsigned int i;
-	bool found = false;
 	LIST_HEAD(list);
 
 	/* Check if the remote device has capabilities required to support CM */
@@ -2006,34 +2004,33 @@ static void riocm_remove_dev(struct device *dev, struct subsys_interface *sif)
 
 	/* Find matching cm_dev object */
 	down_write(&rdev_sem);
-	list_for_each_entry(cm, &cm_dev_list, list) {
-		if (cm->mport == rdev->net->hport) {
-			found = true;
+	list_for_each_entry(cm_iter, &cm_dev_list, list) {
+		if (cm_iter->mport == rdev->net->hport) {
+			cm = cm_iter;
 			break;
 		}
 	}
 
-	if (!found) {
+	if (!cm) {
 		up_write(&rdev_sem);
 		return;
 	}
 
 	/* Remove remote device from the list of peers */
-	found = false;
-	list_for_each_entry(peer, &cm->peers, node) {
-		if (peer->rdev == rdev) {
+	list_for_each_entry(peer_iter, &cm->peers, node) {
+		if (peer_iter->rdev == rdev) {
 			riocm_debug(RDEV, "removing peer %s", rio_name(rdev));
-			found = true;
-			list_del(&peer->node);
+			peer = peer_iter;
+			list_del(&peer_iter->node);
 			cm->npeers--;
-			kfree(peer);
+			kfree(peer_iter);
 			break;
 		}
 	}
 
 	up_write(&rdev_sem);
 
-	if (!found)
+	if (!peer)
 		return;
 
 	/*
@@ -2179,26 +2176,25 @@ static void riocm_remove_mport(struct device *dev,
 			       struct class_interface *class_intf)
 {
 	struct rio_mport *mport = to_rio_mport(dev);
-	struct cm_dev *cm;
+	struct cm_dev *cm = NULL, *iter;
 	struct cm_peer *peer, *temp;
 	struct rio_channel *ch, *_c;
 	unsigned int i;
-	bool found = false;
 	LIST_HEAD(list);
 
 	riocm_debug(MPORT, "%s", mport->name);
 
 	/* Find a matching cm_dev object */
 	down_write(&rdev_sem);
-	list_for_each_entry(cm, &cm_dev_list, list) {
-		if (cm->mport == mport) {
-			list_del(&cm->list);
-			found = true;
+	list_for_each_entry(iter, &cm_dev_list, list) {
+		if (iter->mport == mport) {
+			list_del(&iter->list);
+			cm = iter;
 			break;
 		}
 	}
 	up_write(&rdev_sem);
-	if (!found)
+	if (!cm)
 		return;
 
 	flush_workqueue(cm->rx_wq);
