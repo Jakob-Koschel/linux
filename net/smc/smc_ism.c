@@ -136,24 +136,24 @@ out:
  */
 int smc_ism_put_vlan(struct smcd_dev *smcd, unsigned short vlanid)
 {
-	struct smc_ism_vlanid *vlan;
+	struct smc_ism_vlanid *vlan = NULL;
+	struct smc_ism_vlanid *iter;
 	unsigned long flags;
-	bool found = false;
 	int rc = 0;
 
 	if (!vlanid)			/* No valid vlan id */
 		return -EINVAL;
 
 	spin_lock_irqsave(&smcd->lock, flags);
-	list_for_each_entry(vlan, &smcd->vlan, list) {
-		if (vlan->vlanid == vlanid) {
-			if (!refcount_dec_and_test(&vlan->refcnt))
+	list_for_each_entry(iter, &smcd->vlan, list) {
+		if (iter->vlanid == vlanid) {
+			if (!refcount_dec_and_test(&iter->refcnt))
 				goto out;
-			found = true;
+			vlan = iter;
 			break;
 		}
 	}
-	if (!found) {
+	if (!vlan) {
 		rc = -ENOENT;
 		goto out;		/* VLAN id not in table */
 	}
