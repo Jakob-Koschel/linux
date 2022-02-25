@@ -554,9 +554,9 @@ static int remove_promisc_qp(struct mlx4_dev *dev, u8 port,
 	struct mlx4_mgm *mgm;
 	struct mlx4_steer_index *entry, *tmp_entry;
 	struct mlx4_promisc_qp *pqp;
-	struct mlx4_promisc_qp *dqp;
+	struct mlx4_promisc_qp *dqp = NULL;
+	struct mlx4_promisc_qp *iter;
 	u32 members_count;
-	bool found;
 	bool back_to_list = false;
 	int i;
 	int err;
@@ -587,8 +587,8 @@ static int remove_promisc_qp(struct mlx4_dev *dev, u8 port,
 	}
 	mgm = mailbox->buf;
 	members_count = 0;
-	list_for_each_entry(dqp, &s_steer->promisc_qps[steer], list)
-		mgm->qp[members_count++] = cpu_to_be32(dqp->qpn & MGM_QPN_MASK);
+	list_for_each_entry(iter, &s_steer->promisc_qps[steer], list)
+		mgm->qp[members_count++] = cpu_to_be32(iter->qpn & MGM_QPN_MASK);
 	mgm->members_count = cpu_to_be32(members_count | MLX4_PROT_ETH << 30);
 
 	err = mlx4_WRITE_PROMISC(dev, port, steer, mailbox);
@@ -600,14 +600,14 @@ static int remove_promisc_qp(struct mlx4_dev *dev, u8 port,
 		list_for_each_entry_safe(entry, tmp_entry,
 					 &s_steer->steer_entries[steer],
 					 list) {
-			found = false;
-			list_for_each_entry(dqp, &entry->duplicates, list) {
-				if (dqp->qpn == qpn) {
-					found = true;
+			dqp = NULL;
+			list_for_each_entry(iter, &entry->duplicates, list) {
+				if (iter->qpn == qpn) {
+					dqp = iter;
 					break;
 				}
 			}
-			if (found) {
+			if (dqp) {
 				/* A duplicate, no need to change the MGM,
 				 * only update the duplicates list
 				 */
