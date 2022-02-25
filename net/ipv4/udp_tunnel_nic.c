@@ -841,12 +841,14 @@ udp_tunnel_nic_unregister(struct net_device *dev, struct udp_tunnel_nic *utn)
 	 * and if there are other devices just detach.
 	 */
 	if (info->shared) {
-		struct udp_tunnel_nic_shared_node *node, *first;
+		struct udp_tunnel_nic_shared_node *node = NULL, *first, *iter;
 
-		list_for_each_entry(node, &info->shared->devices, list)
-			if (node->dev == dev)
+		list_for_each_entry(iter, &info->shared->devices, list)
+			if (iter->dev == dev) {
+				node = iter;
 				break;
-		if (list_entry_is_head(node, &info->shared->devices, list))
+			}
+		if (!node)
 			return;
 
 		list_del(&node->list);
