@@ -1625,22 +1625,19 @@ fs_initcall(pcistub_init);
 #ifdef CONFIG_PCI_IOV
 static struct pcistub_device *find_vfs(const struct pci_dev *pdev)
 {
-	struct pcistub_device *psdev = NULL;
+	struct pcistub_device *psdev = NULL, *iter;
 	unsigned long flags;
-	bool found = false;
 
 	spin_lock_irqsave(&pcistub_devices_lock, flags);
-	list_for_each_entry(psdev, &pcistub_devices, dev_list) {
-		if (!psdev->pdev && psdev->dev != pdev
-		    && pci_physfn(psdev->dev) == pdev) {
-			found = true;
+	list_for_each_entry(iter, &pcistub_devices, dev_list) {
+		if (!iter->pdev && iter->dev != pdev
+		    && pci_physfn(iter->dev) == pdev) {
+			psdev = iter;
 			break;
 		}
 	}
 	spin_unlock_irqrestore(&pcistub_devices_lock, flags);
-	if (found)
-		return psdev;
-	return NULL;
+	return psdev;
 }
 
 static int pci_stub_notifier(struct notifier_block *nb,
