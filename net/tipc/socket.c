@@ -3743,14 +3743,17 @@ static int __tipc_nl_list_sk_publ(struct sk_buff *skb,
 				  struct tipc_sock *tsk, u32 *last_publ)
 {
 	int err;
-	struct publication *p;
+	struct publication *p = NULL;
+	struct publication *iter;
 
 	if (*last_publ) {
-		list_for_each_entry(p, &tsk->publications, binding_sock) {
-			if (p->key == *last_publ)
+		list_for_each_entry(iter, &tsk->publications, binding_sock) {
+			if (iter->key == *last_publ) {
+				p = iter;
 				break;
+			}
 		}
-		if (list_entry_is_head(p, &tsk->publications, binding_sock)) {
+		if (!p) {
 			/* We never set seq or call nl_dump_check_consistent()
 			 * this means that setting prev_seq here will cause the
 			 * consistence check to fail in the netlink callback
