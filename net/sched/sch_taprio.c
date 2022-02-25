@@ -1096,9 +1096,8 @@ static int taprio_dev_notifier(struct notifier_block *nb, unsigned long event,
 			       void *ptr)
 {
 	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct taprio_sched *q = NULL, *iter;
 	struct net_device *qdev;
-	struct taprio_sched *q;
-	bool found = false;
 
 	ASSERT_RTNL();
 
@@ -1106,16 +1105,16 @@ static int taprio_dev_notifier(struct notifier_block *nb, unsigned long event,
 		return NOTIFY_DONE;
 
 	spin_lock(&taprio_list_lock);
-	list_for_each_entry(q, &taprio_list, taprio_list) {
-		qdev = qdisc_dev(q->root);
+	list_for_each_entry(iter, &taprio_list, taprio_list) {
+		qdev = qdisc_dev(iter->root);
 		if (qdev == dev) {
-			found = true;
+			q = iter;
 			break;
 		}
 	}
 	spin_unlock(&taprio_list_lock);
 
-	if (found)
+	if (q)
 		taprio_set_picos_per_byte(dev, q);
 
 	return NOTIFY_DONE;
