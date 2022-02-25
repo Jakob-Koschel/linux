@@ -12971,20 +12971,19 @@ static int bnx2x_vlan_rx_add_vid(struct net_device *dev, __be16 proto, u16 vid)
 
 static int bnx2x_vlan_rx_kill_vid(struct net_device *dev, __be16 proto, u16 vid)
 {
+	struct bnx2x_vlan_entry *vlan = NULL, *iter;
 	struct bnx2x *bp = netdev_priv(dev);
-	struct bnx2x_vlan_entry *vlan;
-	bool found = false;
 	int rc = 0;
 
 	DP(NETIF_MSG_IFUP, "Removing VLAN %d\n", vid);
 
-	list_for_each_entry(vlan, &bp->vlan_reg, link)
-		if (vlan->vid == vid) {
-			found = true;
+	list_for_each_entry(iter, &bp->vlan_reg, link)
+		if (iter->vid == vid) {
+			vlan = iter;
 			break;
 		}
 
-	if (!found) {
+	if (!vlan) {
 		BNX2X_ERR("Unable to kill VLAN %d - not found\n", vid);
 		return -EINVAL;
 	}
