@@ -377,16 +377,15 @@ static void iwl_mvm_te_handle_notif(struct iwl_mvm *mvm,
 static int iwl_mvm_aux_roc_te_handle_notif(struct iwl_mvm *mvm,
 					   struct iwl_time_event_notif *notif)
 {
-	struct iwl_mvm_time_event_data *te_data, *tmp;
-	bool aux_roc_te = false;
+	struct iwl_mvm_time_event_data *te_data = NULL, *iter, *tmp;
 
-	list_for_each_entry_safe(te_data, tmp, &mvm->aux_roc_te_list, list) {
-		if (le32_to_cpu(notif->unique_id) == te_data->uid) {
-			aux_roc_te = true;
+	list_for_each_entry_safe(iter, tmp, &mvm->aux_roc_te_list, list) {
+		if (le32_to_cpu(notif->unique_id) == iter->uid) {
+			te_data = iter;
 			break;
 		}
 	}
-	if (!aux_roc_te) /* Not a Aux ROC time event */
+	if (!te_data) /* Not a Aux ROC time event */
 		return -EINVAL;
 
 	iwl_mvm_te_check_trigger(mvm, notif, te_data);
