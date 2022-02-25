@@ -172,23 +172,22 @@ int sctp_add_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *new,
  */
 int sctp_del_bind_addr(struct sctp_bind_addr *bp, union sctp_addr *del_addr)
 {
-	struct sctp_sockaddr_entry *addr, *temp;
-	int found = 0;
+	struct sctp_sockaddr_entry *addr = NULL, *iter, *temp;
 
 	/* We hold the socket lock when calling this function,
 	 * and that acts as a writer synchronizing lock.
 	 */
-	list_for_each_entry_safe(addr, temp, &bp->address_list, list) {
-		if (sctp_cmp_addr_exact(&addr->a, del_addr)) {
+	list_for_each_entry_safe(iter, temp, &bp->address_list, list) {
+		if (sctp_cmp_addr_exact(&iter->a, del_addr)) {
 			/* Found the exact match. */
-			found = 1;
-			addr->valid = 0;
-			list_del_rcu(&addr->list);
+			addr = iter;
+			iter->valid = 0;
+			list_del_rcu(&iter->list);
 			break;
 		}
 	}
 
-	if (found) {
+	if (addr) {
 		kfree_rcu(addr, rcu);
 		SCTP_DBG_OBJCNT_DEC(addr);
 		return 0;
