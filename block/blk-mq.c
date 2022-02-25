@@ -4466,12 +4466,14 @@ static bool blk_mq_elv_switch_none(struct list_head *head,
 static void blk_mq_elv_switch_back(struct list_head *head,
 		struct request_queue *q)
 {
-	struct blk_mq_qe_pair *qe;
+	struct blk_mq_qe_pair *qe = NULL;
+	struct blk_mq_qe_pair *iter;
 	struct elevator_type *t = NULL;
 
-	list_for_each_entry(qe, head, node)
-		if (qe->q == q) {
-			t = qe->type;
+	list_for_each_entry(iter, head, node)
+		if (iter->q == q) {
+			t = iter->type;
+			qe = iter;
 			break;
 		}
 
