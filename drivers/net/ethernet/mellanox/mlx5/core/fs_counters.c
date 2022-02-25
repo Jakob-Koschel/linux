@@ -179,15 +179,17 @@ static void mlx5_fc_stats_query_counter_range(struct mlx5_core_dev *dev,
 					      u32 last_id)
 {
 	struct mlx5_fc_stats *fc_stats = &dev->priv.fc_stats;
-	bool query_more_counters = (first->id <= last_id);
 	int cur_bulk_len = fc_stats->bulk_query_len;
 	u32 *data = fc_stats->bulk_query_out;
-	struct mlx5_fc *counter = first;
+	struct mlx5_fc *counter = first, *iter;
 	u32 bulk_base_id;
 	int bulk_len;
 	int err;
 
-	while (query_more_counters) {
+	if (first->id > last_id)
+		return;
+
+	while (counter) {
 		/* first id must be aligned to 4 when using bulk query */
 		bulk_base_id = counter->id & ~0x3;
 
@@ -201,14 +203,15 @@ static void mlx5_fc_stats_query_counter_range(struct mlx5_core_dev *dev,
 			mlx5_core_err(dev, "Error doing bulk query: %d\n", err);
 			return;
 		}
-		query_more_counters = false;
 
-		list_for_each_entry_from(counter, &fc_stats->counters, list) {
-			int counter_index = counter->id - bulk_base_id;
-			struct mlx5_fc_cache *cache = &counter->cache;
+		iter = counter;
+		counter = NULL;
+		list_for_each_entry_from(iter, &fc_stats->counters, list) {
+			int counter_index = iter->id - bulk_base_id;
+			struct mlx5_fc_cache *cache = &iter->cache;
 
-			if (counter->id >= bulk_base_id + bulk_len) {
-				query_more_counters = true;
+			if (iter->id >= bulk_base_id + bulk_len) {
+				counter = iter;
 				break;
 			}
 

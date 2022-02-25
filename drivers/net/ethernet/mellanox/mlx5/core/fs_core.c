@@ -3227,19 +3227,19 @@ EXPORT_SYMBOL(mlx5_fs_add_rx_underlay_qpn);
 int mlx5_fs_remove_rx_underlay_qpn(struct mlx5_core_dev *dev, u32 underlay_qpn)
 {
 	struct mlx5_flow_root_namespace *root = dev->priv.steering->root_ns;
-	struct mlx5_ft_underlay_qp *uqp;
-	bool found = false;
+	struct mlx5_ft_underlay_qp *uqp = NULL;
+	struct mlx5_ft_underlay_qp *iter;
 	int err = 0;
 
 	mutex_lock(&root->chain_lock);
-	list_for_each_entry(uqp, &root->underlay_qpns, list) {
-		if (uqp->qpn == underlay_qpn) {
-			found = true;
+	list_for_each_entry(iter, &root->underlay_qpns, list) {
+		if (iter->qpn == underlay_qpn) {
+			uqp = iter;
 			break;
 		}
 	}
 
-	if (!found) {
+	if (!uqp) {
 		mlx5_core_warn(dev, "Failed finding underlay qp (%u) in qpn list\n",
 			       underlay_qpn);
 		err = -EINVAL;
