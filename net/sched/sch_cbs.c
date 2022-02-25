@@ -333,9 +333,8 @@ static int cbs_dev_notifier(struct notifier_block *nb, unsigned long event,
 			    void *ptr)
 {
 	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
-	struct cbs_sched_data *q;
+	struct cbs_sched_data *q = NULL, *iter;
 	struct net_device *qdev;
-	bool found = false;
 
 	ASSERT_RTNL();
 
@@ -343,16 +342,16 @@ static int cbs_dev_notifier(struct notifier_block *nb, unsigned long event,
 		return NOTIFY_DONE;
 
 	spin_lock(&cbs_list_lock);
-	list_for_each_entry(q, &cbs_list, cbs_list) {
-		qdev = qdisc_dev(q->qdisc);
+	list_for_each_entry(iter, &cbs_list, cbs_list) {
+		qdev = qdisc_dev(iter->qdisc);
 		if (qdev == dev) {
-			found = true;
+			q = iter;
 			break;
 		}
 	}
 	spin_unlock(&cbs_list_lock);
 
-	if (found)
+	if (q)
 		cbs_set_port_rate(dev, q);
 
 	return NOTIFY_DONE;
