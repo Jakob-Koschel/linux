@@ -130,7 +130,7 @@ static void pcie_pme_handle_request(struct pci_dev *port, u16 req_id)
 {
 	u8 busnr = req_id >> 8, devfn = req_id & 0xff;
 	struct pci_bus *bus;
-	struct pci_dev *dev;
+	struct pci_dev *dev = NULL, *iter;
 	bool found = false;
 
 	/* First, check if the PME is from the root port itself. */
@@ -169,17 +169,17 @@ static void pcie_pme_handle_request(struct pci_dev *port, u16 req_id)
 
 	/* Finally, try to find the PME source on the bus. */
 	down_read(&pci_bus_sem);
-	list_for_each_entry(dev, &bus->devices, bus_list) {
-		pci_dev_get(dev);
-		if (dev->devfn == devfn) {
-			found = true;
+	list_for_each_entry(iter, &bus->devices, bus_list) {
+		pci_dev_get(iter);
+		if (iter->devfn == devfn) {
+			dev = iter;
 			break;
 		}
-		pci_dev_put(dev);
+		pci_dev_put(iter);
 	}
 	up_read(&pci_bus_sem);
 
-	if (found) {
+	if (dev) {
 		/* The device is there, but we have to check its PME status. */
 		found = pci_check_pme_status(dev);
 		if (found) {
