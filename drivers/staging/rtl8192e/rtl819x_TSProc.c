@@ -213,6 +213,7 @@ static struct ts_common_info *SearchAdmitTRStream(struct rtllib_device *ieee,
 	bool	search_dir[4] = {0};
 	struct list_head *psearch_list;
 	struct ts_common_info *pRet = NULL;
+	struct ts_common_info *iter;
 
 	if (ieee->iw_mode == IW_MODE_MASTER) {
 		if (TxRxSelect == TX_DIR) {
@@ -247,19 +248,19 @@ static struct ts_common_info *SearchAdmitTRStream(struct rtllib_device *ieee,
 	for (dir = 0; dir <= DIR_BI_DIR; dir++) {
 		if (!search_dir[dir])
 			continue;
-		list_for_each_entry(pRet, psearch_list, List) {
-			if (memcmp(pRet->Addr, Addr, 6) == 0 &&
-			    pRet->TSpec.f.TSInfo.field.ucTSID == TID &&
-			    pRet->TSpec.f.TSInfo.field.ucDirection == dir)
+		list_for_each_entry(iter, psearch_list, List) {
+			if (memcmp(iter->Addr, Addr, 6) == 0 &&
+			    iter->TSpec.f.TSInfo.field.ucTSID == TID &&
+			    iter->TSpec.f.TSInfo.field.ucDirection == dir) {
+				pRet = iter;
 				break;
+			}
 		}
-		if (&pRet->List  != psearch_list)
+		if (pRet)
 			break;
 	}
 
-	if (pRet && &pRet->List  != psearch_list)
-		return pRet;
-	return NULL;
+	return pRet;
 }
 
 static void MakeTSEntry(struct ts_common_info *pTsCommonInfo, u8 *Addr,

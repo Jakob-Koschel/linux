@@ -2540,7 +2540,8 @@ static inline void rtllib_process_probe_response(
 	struct rtllib_probe_response *beacon,
 	struct rtllib_rx_stats *stats)
 {
-	struct rtllib_network *target;
+	struct rtllib_network *target = NULL;
+	struct rtllib_network *iter;
 	struct rtllib_network *oldest = NULL;
 	struct rtllib_info_element *info_element = &beacon->info_element[0];
 	unsigned long flags;
@@ -2623,19 +2624,21 @@ static inline void rtllib_process_probe_response(
 				ieee->LinkDetectInfo.NumRecvBcnInPeriod++;
 		}
 	}
-	list_for_each_entry(target, &ieee->network_list, list) {
-		if (is_same_network(target, network,
-		   (target->ssid_len ? 1 : 0)))
+	list_for_each_entry(iter, &ieee->network_list, list) {
+		if (is_same_network(iter, network,
+		   (iter->ssid_len ? 1 : 0))) {
+			target = iter;
 			break;
+		}
 		if ((oldest == NULL) ||
-		    (target->last_scanned < oldest->last_scanned))
-			oldest = target;
+		    (iter->last_scanned < oldest->last_scanned))
+			oldest = iter;
 	}
 
 	/* If we didn't find a match, then get a new network slot to initialize
 	 * with this beacon's information
 	 */
-	if (&target->list == &ieee->network_list) {
+	if (!target) {
 		if (list_empty(&ieee->network_free_list)) {
 			/* If there are no more slots, expire the oldest */
 			list_del(&oldest->list);
