@@ -39,19 +39,22 @@ static LIST_HEAD(sram_bank_list);
 struct gen_pool *sram_get_gpool(char *pool_name)
 {
 	struct sram_bank_info *info = NULL;
+	struct sram_bank_info *iter;
 
 	if (!pool_name)
 		return NULL;
 
 	mutex_lock(&sram_lock);
 
-	list_for_each_entry(info, &sram_bank_list, node)
-		if (!strcmp(pool_name, info->pool_name))
+	list_for_each_entry(iter, &sram_bank_list, node)
+		if (!strcmp(pool_name, iter->pool_name)) {
+			info = iter;
 			break;
+		}
 
 	mutex_unlock(&sram_lock);
 
-	if (&info->node == &sram_bank_list)
+	if (!info)
 		return NULL;
 
 	return info->gpool;
