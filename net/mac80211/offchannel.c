@@ -687,7 +687,7 @@ int ieee80211_remain_on_channel(struct wiphy *wiphy, struct wireless_dev *wdev,
 static int ieee80211_cancel_roc(struct ieee80211_local *local,
 				u64 cookie, bool mgmt_tx)
 {
-	struct ieee80211_roc_work *roc, *tmp, *found = NULL;
+	struct ieee80211_roc_work *roc = NULL, *iter, *tmp;
 	int ret;
 
 	if (!cookie)
@@ -696,23 +696,23 @@ static int ieee80211_cancel_roc(struct ieee80211_local *local,
 	flush_work(&local->hw_roc_start);
 
 	mutex_lock(&local->mtx);
-	list_for_each_entry_safe(roc, tmp, &local->roc_list, list) {
-		if (!mgmt_tx && roc->cookie != cookie)
+	list_for_each_entry_safe(iter, tmp, &local->roc_list, list) {
+		if (!mgmt_tx && iter->cookie != cookie)
 			continue;
-		else if (mgmt_tx && roc->mgmt_tx_cookie != cookie)
+		else if (mgmt_tx && iter->mgmt_tx_cookie != cookie)
 			continue;
 
-		found = roc;
+		roc = iter;
 		break;
 	}
 
-	if (!found) {
+	if (!roc) {
 		mutex_unlock(&local->mtx);
 		return -ENOENT;
 	}
 
-	if (!found->started) {
-		ieee80211_roc_notify_destroy(found);
+	if (!roc->started) {
+		ieee80211_roc_notify_destroy(roc);
 		goto out_unlock;
 	}
 
@@ -728,21 +728,21 @@ static int ieee80211_cancel_roc(struct ieee80211_local *local,
 		 * cancel them all - we should wait for as much time as needed
 		 * for the longest remaining one, and only then cancel ...
 		 */
-		list_for_each_entry_safe(roc, tmp, &local->roc_list, list) {
-			if (!roc->started)
+		list_for_each_entry_safe(iter, tmp, &local->roc_list, list) {
+			if (!iter->started)
 				break;
-			if (roc == found)
-				found = NULL;
+			if (iter == roc)
+				roc = NULL;
 			ieee80211_roc_notify_destroy(roc);
 		}
 
 		/* that really must not happen - it was started */
-		WARN_ON(found);
+		WARN_ON(roc);
 
 		ieee80211_start_next_roc(local);
 	} else {
 		/* go through work struct to return to the operating channel */
-		found->abort = true;
+		roc->abort = true;
 		mod_delayed_work(local->workqueue, &local->roc_work, 0);
 	}
 
