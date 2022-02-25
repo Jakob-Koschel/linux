@@ -3858,7 +3858,7 @@ void smb2_reconnect_server(struct work_struct *work)
 	tcon = kzalloc(sizeof(struct cifs_tcon), GFP_KERNEL);
 	if (!tcon) {
 		resched = true;
-		list_del_init(&ses->rlist);
+		list_del_init(&pserver->smb_ses_list);
 		cifs_put_smb_ses(ses);
 		goto done;
 	}
