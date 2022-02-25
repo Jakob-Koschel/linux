@@ -15,7 +15,7 @@ static int nfit_handle_mce(struct notifier_block *nb, unsigned long val,
 {
 	struct mce *mce = (struct mce *)data;
 	struct acpi_nfit_desc *acpi_desc;
-	struct nfit_spa *nfit_spa;
+	struct nfit_spa *nfit_spa = NULL, *iter;
 
 	/* We only care about uncorrectable memory errors */
 	if (!mce_is_memory_error(mce) || mce_is_correctable(mce))
@@ -33,11 +33,10 @@ static int nfit_handle_mce(struct notifier_block *nb, unsigned long val,
 	mutex_lock(&acpi_desc_lock);
 	list_for_each_entry(acpi_desc, &acpi_descs, list) {
 		struct device *dev = acpi_desc->dev;
-		int found_match = 0;
 
 		mutex_lock(&acpi_desc->init_mutex);
-		list_for_each_entry(nfit_spa, &acpi_desc->spas, list) {
-			struct acpi_nfit_system_address *spa = nfit_spa->spa;
+		list_for_each_entry(iter, &acpi_desc->spas, list) {
+			struct acpi_nfit_system_address *spa = iter->spa;
 
 			if (nfit_spa_type(spa) != NFIT_SPA_PM)
 				continue;
@@ -46,7 +45,7 @@ static int nfit_handle_mce(struct notifier_block *nb, unsigned long val,
 				continue;
 			if ((spa->address + spa->length - 1) < mce->addr)
 				continue;
-			found_match = 1;
+			nfit_spa = iter;
 			dev_dbg(dev, "addr in SPA %d (0x%llx, 0x%llx)\n",
 				spa->range_index, spa->address, spa->length);
 			/*
@@ -58,7 +57,7 @@ static int nfit_handle_mce(struct notifier_block *nb, unsigned long val,
 		}
 		mutex_unlock(&acpi_desc->init_mutex);
 
-		if (!found_match)
+		if (!nfit_spa)
 			continue;
 
 		/* If this fails due to an -ENOMEM, there is little we can do */

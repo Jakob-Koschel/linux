@@ -227,8 +227,8 @@ static bool nfit_test_release_region(struct device *dev,
 		struct nfit_test_resource *nfit_res = get_nfit_res(start);
 
 		if (nfit_res) {
-			struct nfit_test_request *req;
-			struct resource *res = NULL;
+			struct nfit_test_request *req = NULL;
+			struct nfit_test_request *iter;
 
 			if (dev) {
 				devres_release(dev, nfit_devres_release, match,
@@ -237,18 +237,18 @@ static bool nfit_test_release_region(struct device *dev,
 			}
 
 			spin_lock(&nfit_res->lock);
-			list_for_each_entry(req, &nfit_res->requests, list)
-				if (req->res.start == start) {
-					res = &req->res;
-					list_del(&req->list);
+			list_for_each_entry(iter, &nfit_res->requests, list)
+				if (iter->res.start == start) {
+					list_del(&iter->list);
+					req = iter;
 					break;
 				}
 			spin_unlock(&nfit_res->lock);
 
-			WARN(!res || resource_size(res) != n,
+			WARN(!req || resource_size(&req->res) != n,
 					"%s: start: %llx n: %llx mismatch: %pr\n",
-						__func__, start, n, res);
-			if (res)
+						__func__, start, n, &req->res);
+			if (req)
 				kfree(req);
 			return true;
 		}
