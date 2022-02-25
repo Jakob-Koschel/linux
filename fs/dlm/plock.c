@@ -419,8 +419,8 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
 			 loff_t *ppos)
 {
 	struct dlm_plock_info info;
-	struct plock_op *op;
-	int found = 0, do_callback = 0;
+	struct plock_op *op = NULL, *iter;
+	int do_callback = 0;
 
 	if (count != sizeof(info))
 		return -EINVAL;
@@ -432,24 +432,25 @@ static ssize_t dev_write(struct file *file, const char __user *u, size_t count,
 		return -EINVAL;
 
 	spin_lock(&ops_lock);
-	list_for_each_entry(op, &recv_list, list) {
-		if (op->info.fsid == info.fsid &&
-		    op->info.number == info.number &&
-		    op->info.owner == info.owner) {
-			struct plock_xop *xop = (struct plock_xop *)op;
-			list_del_init(&op->list);
-			memcpy(&op->info, &info, sizeof(info));
+	list_for_each_entry(iter, &recv_list, list) {
+		if (iter->info.fsid == info.fsid &&
+		    iter->info.number == info.number &&
+		    iter->info.owner == info.owner) {
+			struct plock_xop *xop = (struct plock_xop *)iter;
+
+			list_del_init(&iter->list);
+			memcpy(&iter->info, &info, sizeof(info));
 			if (xop->callback)
 				do_callback = 1;
 			else
-				op->done = 1;
-			found = 1;
+				iter->done = 1;
+			op = iter;
 			break;
 		}
 	}
 	spin_unlock(&ops_lock);
 
-	if (found) {
+	if (op) {
 		if (do_callback)
 			dlm_plock_callback(op);
 		else
