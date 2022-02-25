@@ -658,19 +658,18 @@ fail:
 static int
 p9_virtio_create(struct p9_client *client, const char *devname, char *args)
 {
-	struct virtio_chan *chan;
+	struct virtio_chan *chan = NULL, *iter;
 	int ret = -ENOENT;
-	int found = 0;
 
 	if (devname == NULL)
 		return -EINVAL;
 
 	mutex_lock(&virtio_9p_lock);
-	list_for_each_entry(chan, &virtio_chan_list, chan_list) {
-		if (!strcmp(devname, chan->tag)) {
-			if (!chan->inuse) {
-				chan->inuse = true;
-				found = 1;
+	list_for_each_entry(iter, &virtio_chan_list, chan_list) {
+		if (!strcmp(devname, iter->tag)) {
+			if (!iter->inuse) {
+				iter->inuse = true;
+				chan = iter;
 				break;
 			}
 			ret = -EBUSY;
@@ -678,7 +677,7 @@ p9_virtio_create(struct p9_client *client, const char *devname, char *args)
 	}
 	mutex_unlock(&virtio_9p_lock);
 
-	if (!found) {
+	if (!chan) {
 		pr_err("no channels available for device %s\n", devname);
 		return ret;
 	}
