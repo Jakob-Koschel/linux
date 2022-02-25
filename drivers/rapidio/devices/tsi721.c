@@ -383,8 +383,7 @@ static void tsi721_db_dpc(struct work_struct *work)
 	struct tsi721_device *priv = container_of(work, struct tsi721_device,
 						    idb_work);
 	struct rio_mport *mport;
-	struct rio_dbell *dbell;
-	int found = 0;
+	struct rio_dbell *dbell = NULL, *iter;
 	u32 wr_ptr, rd_ptr;
 	u64 *idb_entry;
 	u32 regval;
@@ -410,15 +409,15 @@ static void tsi721_db_dpc(struct work_struct *work)
 		*idb_entry = 0;
 
 		/* Process one doorbell */
-		list_for_each_entry(dbell, &mport->dbells, node) {
-			if ((dbell->res->start <= DBELL_INF(idb.bytes)) &&
-			    (dbell->res->end >= DBELL_INF(idb.bytes))) {
-				found = 1;
+		list_for_each_entry(iter, &mport->dbells, node) {
+			if ((iter->res->start <= DBELL_INF(idb.bytes)) &&
+			    (iter->res->end >= DBELL_INF(idb.bytes))) {
+				dbell = iter;
 				break;
 			}
 		}
 
-		if (found) {
+		if (dbell) {
 			dbell->dinb(mport, dbell->dev_id, DBELL_SID(idb.bytes),
 				    DBELL_TID(idb.bytes), DBELL_INF(idb.bytes));
 		} else {

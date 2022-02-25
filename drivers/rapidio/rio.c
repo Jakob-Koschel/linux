@@ -473,21 +473,21 @@ EXPORT_SYMBOL_GPL(rio_request_inb_dbell);
  */
 int rio_release_inb_dbell(struct rio_mport *mport, u16 start, u16 end)
 {
-	int rc = 0, found = 0;
-	struct rio_dbell *dbell;
+	int rc = 0;
+	struct rio_dbell *dbell = NULL, *iter;
 
 	mutex_lock(&mport->lock);
-	list_for_each_entry(dbell, &mport->dbells, node) {
-		if ((dbell->res->start == start) && (dbell->res->end == end)) {
-			list_del(&dbell->node);
-			found = 1;
+	list_for_each_entry(iter, &mport->dbells, node) {
+		if ((iter->res->start == start) && (iter->res->end == end)) {
+			list_del(&iter->node);
+			dbell = iter;
 			break;
 		}
 	}
 	mutex_unlock(&mport->lock);
 
 	/* If we can't find an exact match, fail */
-	if (!found) {
+	if (!dbell) {
 		rc = -EINVAL;
 		goto out;
 	}

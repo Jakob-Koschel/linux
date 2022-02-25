@@ -1009,11 +1009,10 @@ static int rio_mport_wait_for_async_dma(struct file *filp, void __user *arg)
 {
 	struct mport_cdev_priv *priv;
 	struct rio_async_tx_wait w_param;
-	struct mport_dma_req *req;
+	struct mport_dma_req *req = NULL, *iter;
 	dma_cookie_t cookie;
 	unsigned long tmo;
 	long wret;
-	int found = 0;
 	int ret;
 
 	priv = (struct mport_cdev_priv *)filp->private_data;
@@ -1028,16 +1027,16 @@ static int rio_mport_wait_for_async_dma(struct file *filp, void __user *arg)
 		tmo = msecs_to_jiffies(dma_timeout);
 
 	spin_lock(&priv->req_lock);
-	list_for_each_entry(req, &priv->async_list, node) {
-		if (req->cookie == cookie) {
-			list_del(&req->node);
-			found = 1;
+	list_for_each_entry(iter, &priv->async_list, node) {
+		if (iter->cookie == cookie) {
+			list_del(&iter->node);
+			req = iter;
 			break;
 		}
 	}
 	spin_unlock(&priv->req_lock);
 
-	if (!found)
+	if (!req)
 		return -EAGAIN;
 
 	wret = wait_for_completion_interruptible_timeout(&req->req_comp, tmo);
@@ -2197,8 +2196,8 @@ static int mport_cdev_mmap(struct file *filp, struct vm_area_struct *vma)
 	size_t size = vma->vm_end - vma->vm_start;
 	dma_addr_t baddr;
 	unsigned long offset;
-	int found = 0, ret;
-	struct rio_mport_mapping *map;
+	int ret;
+	struct rio_mport_mapping *map = NULL, *iter;
 
 	rmcd_debug(MMAP, "0x%x bytes at offset 0x%lx",
 		   (unsigned int)size, vma->vm_pgoff);
@@ -2207,16 +2206,16 @@ static int mport_cdev_mmap(struct file *filp, struct vm_area_struct *vma)
 	baddr = ((dma_addr_t)vma->vm_pgoff << PAGE_SHIFT);
 
 	mutex_lock(&md->buf_mutex);
-	list_for_each_entry(map, &md->mappings, node) {
-		if (baddr >= map->phys_addr &&
-		    baddr < (map->phys_addr + map->size)) {
-			found = 1;
+	list_for_each_entry(iter, &md->mappings, node) {
+		if (baddr >= iter->phys_addr &&
+		    baddr < (iter->phys_addr + iter->size)) {
+			map = iter;
 			break;
 		}
 	}
 	mutex_unlock(&md->buf_mutex);
 
-	if (!found)
+	if (!map)
 		return -ENOMEM;
 
 	offset = baddr - map->phys_addr;
@@ -2560,24 +2559,23 @@ static void mport_remove_mport(struct device *dev,
 		struct class_interface *class_intf)
 {
 	struct rio_mport *mport = NULL;
-	struct mport_dev *chdev;
-	int found = 0;
+	struct mport_dev *chdev = NULL, *iter;
 
 	mport = to_rio_mport(dev);
 	rmcd_debug(EXIT, "Remove %s", mport->name);
 
 	mutex_lock(&mport_devs_lock);
-	list_for_each_entry(chdev, &mport_devs, node) {
-		if (chdev->mport->id == mport->id) {
-			atomic_set(&chdev->active, 0);
-			list_del(&chdev->node);
-			found = 1;
+	list_for_each_entry(iter, &mport_devs, node) {
+		if (iter->mport->id == mport->id) {
+			atomic_set(&iter->active, 0);
+			list_del(&iter->node);
+			chdev = iter;
 			break;
 		}
 	}
 	mutex_unlock(&mport_devs_lock);
 
-	if (found)
+	if (chdev)
 		mport_cdev_remove(chdev);
 }
 
