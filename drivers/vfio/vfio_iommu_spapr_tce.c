@@ -104,8 +104,7 @@ static long tce_iommu_unregister_pages(struct tce_container *container,
 		__u64 vaddr, __u64 size)
 {
 	struct mm_iommu_table_group_mem_t *mem;
-	struct tce_iommu_prereg *tcemem;
-	bool found = false;
+	struct tce_iommu_prereg *tcemem = NULL, *iter;
 	long ret;
 
 	if ((vaddr & ~PAGE_MASK) || (size & ~PAGE_MASK))
@@ -115,14 +114,14 @@ static long tce_iommu_unregister_pages(struct tce_container *container,
 	if (!mem)
 		return -ENOENT;
 
-	list_for_each_entry(tcemem, &container->prereg_list, next) {
-		if (tcemem->mem == mem) {
-			found = true;
+	list_for_each_entry(iter, &container->prereg_list, next) {
+		if (iter->mem == mem) {
+			tcemem = iter;
 			break;
 		}
 	}
 
-	if (!found)
+	if (!tcemem)
 		ret = -ENOENT;
 	else
 		ret = tce_iommu_prereg_free(container, tcemem);
@@ -1330,19 +1329,19 @@ static void tce_iommu_detach_group(void *iommu_data,
 {
 	struct tce_container *container = iommu_data;
 	struct iommu_table_group *table_group;
-	bool found = false;
-	struct tce_iommu_group *tcegrp;
+	struct tce_iommu_group *tcegrp = NULL;
+	struct tce_iommu_group *iter;
 
 	mutex_lock(&container->lock);
 
-	list_for_each_entry(tcegrp, &container->group_list, next) {
-		if (tcegrp->grp == iommu_group) {
-			found = true;
+	list_for_each_entry(iter, &container->group_list, next) {
+		if (iter->grp == iommu_group) {
+			tcegrp = iter;
 			break;
 		}
 	}
 
-	if (!found) {
+	if (!tcegrp) {
 		pr_warn("tce_vfio: detaching unattached group #%u\n",
 				iommu_group_id(iommu_group));
 		goto unlock_exit;
