@@ -479,19 +479,18 @@ EXPORT_SYMBOL(backlight_device_register);
  */
 struct backlight_device *backlight_device_get_by_type(enum backlight_type type)
 {
-	bool found = false;
-	struct backlight_device *bd;
+	struct backlight_device *bd = NULL, *iter;
 
 	mutex_lock(&backlight_dev_list_mutex);
-	list_for_each_entry(bd, &backlight_dev_list, entry) {
-		if (bd->props.type == type) {
-			found = true;
+	list_for_each_entry(iter, &backlight_dev_list, entry) {
+		if (iter->props.type == type) {
+			bd = iter;
 			break;
 		}
 	}
 	mutex_unlock(&backlight_dev_list_mutex);
 
-	return found ? bd : NULL;
+	return bd;
 }
 EXPORT_SYMBOL(backlight_device_get_by_type);
 
