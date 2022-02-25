@@ -25,25 +25,24 @@ static LIST_HEAD(ssc_list);
 
 struct ssc_device *ssc_request(unsigned int ssc_num)
 {
-	int ssc_valid = 0;
-	struct ssc_device *ssc;
+	struct ssc_device *ssc = NULL, *iter;
 
 	mutex_lock(&user_lock);
-	list_for_each_entry(ssc, &ssc_list, list) {
-		if (ssc->pdev->dev.of_node) {
-			if (of_alias_get_id(ssc->pdev->dev.of_node, "ssc")
+	list_for_each_entry(iter, &ssc_list, list) {
+		if (iter->pdev->dev.of_node) {
+			if (of_alias_get_id(iter->pdev->dev.of_node, "ssc")
 				== ssc_num) {
-				ssc->pdev->id = ssc_num;
-				ssc_valid = 1;
+				iter->pdev->id = ssc_num;
+				ssc = iter;
 				break;
 			}
-		} else if (ssc->pdev->id == ssc_num) {
-			ssc_valid = 1;
+		} else if (iter->pdev->id == ssc_num) {
+			ssc = iter;
 			break;
 		}
 	}
 
-	if (!ssc_valid) {
+	if (!ssc) {
 		mutex_unlock(&user_lock);
 		pr_err("ssc: ssc%d platform device is missing\n", ssc_num);
 		return ERR_PTR(-ENODEV);
