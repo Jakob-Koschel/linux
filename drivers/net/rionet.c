@@ -404,17 +404,17 @@ static void rionet_remove_dev(struct device *dev, struct subsys_interface *sif)
 {
 	struct rio_dev *rdev = to_rio_dev(dev);
 	unsigned char netid = rdev->net->hport->id;
-	struct rionet_peer *peer;
-	int state, found = 0;
+	struct rionet_peer *peer = NULL, *iter;
+	int state;
 	unsigned long flags;
 
 	if (!dev_rionet_capable(rdev))
 		return;
 
 	spin_lock_irqsave(&nets[netid].lock, flags);
-	list_for_each_entry(peer, &nets[netid].peers, node) {
-		if (peer->rdev == rdev) {
-			list_del(&peer->node);
+	list_for_each_entry(iter, &nets[netid].peers, node) {
+		if (iter->rdev == rdev) {
+			list_del(&iter->node);
 			if (nets[netid].active[rdev->destid]) {
 				state = atomic_read(&rdev->state);
 				if (state != RIO_DEVICE_GONE &&
@@ -425,13 +425,13 @@ static void rionet_remove_dev(struct device *dev, struct subsys_interface *sif)
 				nets[netid].active[rdev->destid] = NULL;
 				nets[netid].nact--;
 			}
-			found = 1;
+			peer = iter;
 			break;
 		}
 	}
 	spin_unlock_irqrestore(&nets[netid].lock, flags);
 
-	if (found) {
+	if (peer) {
 		if (peer->res)
 			rio_release_outb_dbell(rdev, peer->res);
 		kfree(peer);
