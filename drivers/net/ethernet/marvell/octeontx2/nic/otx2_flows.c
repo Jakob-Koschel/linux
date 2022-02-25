@@ -1115,9 +1115,8 @@ static int otx2_remove_flow_msg(struct otx2_nic *pfvf, u16 entry, bool all)
 
 static void otx2_update_rem_pfmac(struct otx2_nic *pfvf, int req)
 {
-	struct otx2_flow *iter;
+	struct otx2_flow *flow = NULL, *iter;
 	struct ethhdr *eth_hdr;
-	bool found = false;
 
 	list_for_each_entry(iter, &pfvf->flow_cfg->flow_list, list) {
 		if (iter->dmac_filter && iter->entry == 0) {
@@ -1126,7 +1125,7 @@ static void otx2_update_rem_pfmac(struct otx2_nic *pfvf, int req)
 				otx2_dmacflt_remove(pfvf, eth_hdr->h_dest,
 						    0);
 				clear_bit(0, &pfvf->flow_cfg->dmacflt_bmap);
-				found = true;
+				flow = iter;
 			} else {
 				ether_addr_copy(eth_hdr->h_dest,
 						pfvf->netdev->dev_addr);
@@ -1136,9 +1135,9 @@ static void otx2_update_rem_pfmac(struct otx2_nic *pfvf, int req)
 		}
 	}
 
-	if (found) {
-		list_del(&iter->list);
-		kfree(iter);
+	if (flow) {
+		list_del(&flow->list);
+		kfree(flow);
 		pfvf->flow_cfg->nr_flows--;
 	}
 }
