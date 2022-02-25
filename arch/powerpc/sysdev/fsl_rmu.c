@@ -314,8 +314,7 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 		struct rio_dbell_msg *dmsg =
 			fsl_dbell->dbell_ring.virt +
 			(in_be32(&fsl_dbell->dbell_regs->dqdpar) & 0xfff);
-		struct rio_dbell *dbell;
-		int found = 0;
+		struct rio_dbell *dbell = NULL, *iter;
 
 		pr_debug
 			("RIO: processing doorbell,"
@@ -324,17 +323,17 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 
 		for (i = 0; i < MAX_PORT_NUM; i++) {
 			if (fsl_dbell->mport[i]) {
-				list_for_each_entry(dbell,
+				list_for_each_entry(iter,
 					&fsl_dbell->mport[i]->dbells, node) {
-					if ((dbell->res->start
+					if ((iter->res->start
 						<= dmsg->info)
-						&& (dbell->res->end
+						&& (iter->res->end
 						>= dmsg->info)) {
-						found = 1;
+						dbell = iter;
 						break;
 					}
 				}
-				if (found && dbell->dinb) {
+				if (dbell && dbell->dinb) {
 					dbell->dinb(fsl_dbell->mport[i],
 						dbell->dev_id, dmsg->sid,
 						dmsg->tid,
@@ -344,7 +343,7 @@ fsl_rio_dbell_handler(int irq, void *dev_instance)
 			}
 		}
 
-		if (!found) {
+		if (!dbell) {
 			pr_debug
 				("RIO: spurious doorbell,"
 				" sid %2.2x tid %2.2x info %4.4x\n",
