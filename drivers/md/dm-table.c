@@ -424,17 +424,16 @@ static int dm_set_device_limits(struct dm_target *ti, struct dm_dev *dev,
  */
 void dm_put_device(struct dm_target *ti, struct dm_dev *d)
 {
-	int found = 0;
 	struct list_head *devices = &ti->table->devices;
-	struct dm_dev_internal *dd;
+	struct dm_dev_internal *dd = NULL, *iter;
 
-	list_for_each_entry(dd, devices, list) {
-		if (dd->dm_dev == d) {
-			found = 1;
+	list_for_each_entry(iter, devices, list) {
+		if (iter->dm_dev == d) {
+			dd = iter;
 			break;
 		}
 	}
-	if (!found) {
+	if (!dd) {
 		DMWARN("%s: device %s not in table devices list",
 		       dm_device_name(ti->table->md), d->name);
 		return;
