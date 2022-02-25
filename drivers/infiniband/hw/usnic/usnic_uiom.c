@@ -506,18 +506,18 @@ out_free_dev:
 
 void usnic_uiom_detach_dev_from_pd(struct usnic_uiom_pd *pd, struct device *dev)
 {
-	struct usnic_uiom_dev *uiom_dev;
-	int found = 0;
+	struct usnic_uiom_dev *uiom_dev = NULL;
+	struct usnic_uiom_dev *iter;
 
 	spin_lock(&pd->lock);
-	list_for_each_entry(uiom_dev, &pd->devs, link) {
-		if (uiom_dev->dev == dev) {
-			found = 1;
+	list_for_each_entry(iter, &pd->devs, link) {
+		if (iter->dev == dev) {
+			uiom_dev = iter;
 			break;
 		}
 	}
 
-	if (!found) {
+	if (!uiom_dev) {
 		usnic_err("Unable to free dev %s - not found\n",
 				dev_name(dev));
 		spin_unlock(&pd->lock);

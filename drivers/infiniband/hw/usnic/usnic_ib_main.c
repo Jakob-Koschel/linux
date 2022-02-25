@@ -457,24 +457,23 @@ static void usnic_ib_device_remove(struct usnic_ib_dev *us_ibdev)
 
 static void usnic_ib_undiscover_pf(struct kref *kref)
 {
-	struct usnic_ib_dev *us_ibdev, *tmp;
+	struct usnic_ib_dev *us_ibdev = NULL, *iter, *tmp;
 	struct pci_dev *dev;
-	bool found = false;
 
 	dev = container_of(kref, struct usnic_ib_dev, vf_cnt)->pdev;
 	mutex_lock(&usnic_ib_ibdev_list_lock);
-	list_for_each_entry_safe(us_ibdev, tmp,
+	list_for_each_entry_safe(iter, tmp,
 				&usnic_ib_ibdev_list, ib_dev_link) {
-		if (us_ibdev->pdev == dev) {
-			list_del(&us_ibdev->ib_dev_link);
-			found = true;
+		if (iter->pdev == dev) {
+			list_del(&iter->ib_dev_link);
+			us_ibdev = iter;
 			break;
 		}
 	}
 
 
 	mutex_unlock(&usnic_ib_ibdev_list_lock);
-	if (found)
+	if (us_ibdev)
 		usnic_ib_device_remove(us_ibdev);
 	else
 		WARN(1, "Failed to remove PF %s\n", pci_name(dev));
