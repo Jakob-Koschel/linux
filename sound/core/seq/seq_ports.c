@@ -608,7 +608,8 @@ int snd_seq_port_disconnect(struct snd_seq_client *connector,
 			    struct snd_seq_port_subscribe *info)
 {
 	struct snd_seq_port_subs_info *dest = &dest_port->c_dest;
-	struct snd_seq_subscribers *subs;
+	struct snd_seq_subscribers *subs = NULL;
+	struct snd_seq_subscribers *iter;
 	int err = -ENOENT;
 
 	/* always start from deleting the dest port for avoiding concurrent
@@ -616,17 +617,18 @@ int snd_seq_port_disconnect(struct snd_seq_client *connector,
 	 */
 	down_write(&dest->list_mutex);
 	/* look for the connection */
-	list_for_each_entry(subs, &dest->list_head, dest_list) {
-		if (match_subs_info(info, &subs->info)) {
+	list_for_each_entry(iter, &dest->list_head, dest_list) {
+		if (match_subs_info(info, &iter->info)) {
 			__delete_and_unsubscribe_port(dest_client, dest_port,
-						      subs, false,
+						      iter, false,
 						      connector->number != dest_client->number);
 			err = 0;
+			subs = iter;
 			break;
 		}
 	}
 	up_write(&dest->list_mutex);
-	if (err < 0)
+	if (!subs)
 		return err;
 
 	delete_and_unsubscribe_port(src_client, src_port, subs, true,
