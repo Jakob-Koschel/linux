@@ -937,7 +937,7 @@ int qed_spq_completion(struct qed_hwfn *p_hwfn,
 	struct qed_spq		*p_spq;
 	struct qed_spq_entry	*p_ent = NULL;
 	struct qed_spq_entry	*tmp;
-	struct qed_spq_entry	*found = NULL;
+	struct qed_spq_entry	*iter;
 
 	if (!p_hwfn)
 		return -EINVAL;
@@ -947,12 +947,12 @@ int qed_spq_completion(struct qed_hwfn *p_hwfn,
 		return -EINVAL;
 
 	spin_lock_bh(&p_spq->lock);
-	list_for_each_entry_safe(p_ent, tmp, &p_spq->completion_pending, list) {
-		if (p_ent->elem.hdr.echo == echo) {
-			list_del(&p_ent->list);
+	list_for_each_entry_safe(iter, tmp, &p_spq->completion_pending, list) {
+		if (iter->elem.hdr.echo == echo) {
+			list_del(&iter->list);
 			qed_spq_comp_bmap_update(p_hwfn, echo);
 			p_spq->comp_count++;
-			found = p_ent;
+			p_ent = iter;
 			break;
 		}
 
@@ -962,7 +962,7 @@ int qed_spq_completion(struct qed_hwfn *p_hwfn,
 		DP_VERBOSE(p_hwfn, QED_MSG_SPQ,
 			   "Got completion for echo %04x - doesn't match echo %04x in completion pending list\n",
 			   le16_to_cpu(echo),
-			   le16_to_cpu(p_ent->elem.hdr.echo));
+			   le16_to_cpu(iter->elem.hdr.echo));
 	}
 
 	/* Release lock before callback, as callback may post
@@ -970,7 +970,7 @@ int qed_spq_completion(struct qed_hwfn *p_hwfn,
 	 */
 	spin_unlock_bh(&p_spq->lock);
 
-	if (!found) {
+	if (!p_ent) {
 		DP_NOTICE(p_hwfn,
 			  "Failed to find an entry this EQE [echo %04x] completes\n",
 			  le16_to_cpu(echo));
@@ -981,19 +981,19 @@ int qed_spq_completion(struct qed_hwfn *p_hwfn,
 		   "Complete EQE [echo %04x]: func %p cookie %p)\n",
 		   le16_to_cpu(echo),
 		   p_ent->comp_cb.function, p_ent->comp_cb.cookie);
-	if (found->comp_cb.function)
-		found->comp_cb.function(p_hwfn, found->comp_cb.cookie, p_data,
+	if (p_ent->comp_cb.function)
+		p_ent->comp_cb.function(p_hwfn, p_ent->comp_cb.cookie, p_data,
 					fw_return_code);
 	else
 		DP_VERBOSE(p_hwfn,
 			   QED_MSG_SPQ,
 			   "Got a completion without a callback function\n");
 
-	if (found->comp_mode != QED_SPQ_MODE_EBLOCK)
+	if (p_ent->comp_mode != QED_SPQ_MODE_EBLOCK)
 		/* EBLOCK  is responsible for returning its own entry into the
 		 * free list.
 		 */
-		qed_spq_return_entry(p_hwfn, found);
+		qed_spq_return_entry(p_hwfn, p_ent);
 
 	return 0;
 }
