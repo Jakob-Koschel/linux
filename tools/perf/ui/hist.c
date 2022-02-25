@@ -823,18 +823,18 @@ void perf_hpp__set_user_width(const char *width_list_str)
 static int add_hierarchy_fmt(struct hists *hists, struct perf_hpp_fmt *fmt)
 {
 	struct perf_hpp_list_node *node = NULL;
+	struct perf_hpp_list_node *iter;
 	struct perf_hpp_fmt *fmt_copy;
-	bool found = false;
 	bool skip = perf_hpp__should_skip(fmt, hists);
 
-	list_for_each_entry(node, &hists->hpp_formats, list) {
-		if (node->level == fmt->level) {
-			found = true;
+	list_for_each_entry(iter, &hists->hpp_formats, list) {
+		if (iter->level == fmt->level) {
+			node = iter;
 			break;
 		}
 	}
 
-	if (!found) {
+	if (!node) {
 		node = malloc(sizeof(*node));
 		if (node == NULL)
 			return -1;
