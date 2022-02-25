@@ -614,22 +614,21 @@ static void unregister_trigger(char *glob,
 			       struct event_trigger_data *test,
 			       struct trace_event_file *file)
 {
-	struct event_trigger_data *data;
-	bool unregistered = false;
+	struct event_trigger_data *data = NULL, *iter;
 
 	lockdep_assert_held(&event_mutex);
 
-	list_for_each_entry(data, &file->triggers, list) {
-		if (data->cmd_ops->trigger_type == test->cmd_ops->trigger_type) {
-			unregistered = true;
-			list_del_rcu(&data->list);
+	list_for_each_entry(iter, &file->triggers, list) {
+		if (iter->cmd_ops->trigger_type == test->cmd_ops->trigger_type) {
+			data = iter;
+			list_del_rcu(&iter->list);
 			trace_event_trigger_enable_disable(file, 0);
 			update_cond_flag(file);
 			break;
 		}
 	}
 
-	if (unregistered && data->ops->free)
+	if (data && data->ops->free)
 		data->ops->free(data->ops, data);
 }
 
@@ -1977,26 +1976,25 @@ void event_enable_unregister_trigger(char *glob,
 {
 	struct enable_trigger_data *test_enable_data = test->private_data;
 	struct enable_trigger_data *enable_data;
-	struct event_trigger_data *data;
-	bool unregistered = false;
+	struct event_trigger_data *data = NULL, *iter;
 
 	lockdep_assert_held(&event_mutex);
 
-	list_for_each_entry(data, &file->triggers, list) {
-		enable_data = data->private_data;
+	list_for_each_entry(iter, &file->triggers, list) {
+		enable_data = iter->private_data;
 		if (enable_data &&
-		    (data->cmd_ops->trigger_type ==
+		    (iter->cmd_ops->trigger_type ==
 		     test->cmd_ops->trigger_type) &&
 		    (enable_data->file == test_enable_data->file)) {
-			unregistered = true;
-			list_del_rcu(&data->list);
+			data = iter;
+			list_del_rcu(&iter->list);
 			trace_event_trigger_enable_disable(file, 0);
 			update_cond_flag(file);
 			break;
 		}
 	}
 
-	if (unregistered && data->ops->free)
+	if (data && data->ops->free)
 		data->ops->free(data->ops, data);
 }
 
