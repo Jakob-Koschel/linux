@@ -809,22 +809,21 @@ EXPORT_SYMBOL_GPL(efivar_entry_set_safe);
 struct efivar_entry *efivar_entry_find(efi_char16_t *name, efi_guid_t guid,
 				       struct list_head *head, bool remove)
 {
-	struct efivar_entry *entry, *n;
+	struct efivar_entry *entry = NULL, *iter, *n;
 	int strsize1, strsize2;
-	bool found = false;
 
-	list_for_each_entry_safe(entry, n, head, list) {
+	list_for_each_entry_safe(iter, n, head, list) {
 		strsize1 = ucs2_strsize(name, 1024);
-		strsize2 = ucs2_strsize(entry->var.VariableName, 1024);
+		strsize2 = ucs2_strsize(iter->var.VariableName, 1024);
 		if (strsize1 == strsize2 &&
-		    !memcmp(name, &(entry->var.VariableName), strsize1) &&
-		    !efi_guidcmp(guid, entry->var.VendorGuid)) {
-			found = true;
+		    !memcmp(name, &(iter->var.VariableName), strsize1) &&
+		    !efi_guidcmp(guid, iter->var.VendorGuid)) {
+			entry = iter;
 			break;
 		}
 	}
 
-	if (!found)
+	if (!entry)
 		return NULL;
 
 	if (remove) {
