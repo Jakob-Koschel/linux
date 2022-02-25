@@ -233,15 +233,18 @@ static void * __percpu *ipcomp_alloc_scratches(void)
 
 static void ipcomp_free_tfms(struct crypto_comp * __percpu *tfms)
 {
-	struct ipcomp_tfms *pos;
+	struct ipcomp_tfms *pos = NULL;
+	struct ipcomp_tfms *iter;
 	int cpu;
 
-	list_for_each_entry(pos, &ipcomp_tfms_list, list) {
-		if (pos->tfms == tfms)
+	list_for_each_entry(iter, &ipcomp_tfms_list, list) {
+		if (iter->tfms == tfms) {
+			pos = iter;
 			break;
+		}
 	}
 
-	WARN_ON(list_entry_is_head(pos, &ipcomp_tfms_list, list));
+	WARN_ON(!pos);
 
 	if (--pos->users)
 		return;
