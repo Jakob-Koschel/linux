@@ -879,17 +879,20 @@ static irqreturn_t cpcap_battery_irq_thread(int irq, void *data)
 {
 	struct cpcap_battery_ddata *ddata = data;
 	struct cpcap_battery_state_data *latest;
-	struct cpcap_interrupt_desc *d;
+	struct cpcap_interrupt_desc *d = NULL;
+	struct cpcap_interrupt_desc *iter;
 
 	if (!atomic_read(&ddata->active))
 		return IRQ_NONE;
 
-	list_for_each_entry(d, &ddata->irq_list, node) {
-		if (irq == d->irq)
+	list_for_each_entry(iter, &ddata->irq_list, node) {
+		if (irq == iter->irq) {
+			d = iter;
 			break;
+		}
 	}
 
-	if (list_entry_is_head(d, &ddata->irq_list, node))
+	if (!d)
 		return IRQ_NONE;
 
 	latest = cpcap_battery_latest(ddata);
