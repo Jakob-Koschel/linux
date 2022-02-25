@@ -1942,8 +1942,8 @@ int amdtp_domain_start(struct amdtp_domain *d, unsigned int tx_init_skip_cycles,
 	unsigned int events_per_buffer = d->events_per_buffer;
 	unsigned int events_per_period = d->events_per_period;
 	unsigned int queue_size;
-	struct amdtp_stream *s;
-	bool found = false;
+	struct amdtp_stream *s = NULL;
+	struct amdtp_stream *iter;
 	int err;
 
 	if (replay_seq) {
@@ -1955,13 +1955,13 @@ int amdtp_domain_start(struct amdtp_domain *d, unsigned int tx_init_skip_cycles,
 	d->replay.on_the_fly = replay_on_the_fly;
 
 	// Select an IT context as IRQ target.
-	list_for_each_entry(s, &d->streams, list) {
-		if (s->direction == AMDTP_OUT_STREAM) {
-			found = true;
+	list_for_each_entry(iter, &d->streams, list) {
+		if (iter->direction == AMDTP_OUT_STREAM) {
+			s = iter;
 			break;
 		}
 	}
-	if (!found)
+	if (!s)
 		return -ENXIO;
 	d->irq_target = s;
 
