@@ -8004,19 +8004,18 @@ ath11k_wmi_send_unit_test_cmd(struct ath11k *ar,
 
 int ath11k_wmi_simulate_radar(struct ath11k *ar)
 {
-	struct ath11k_vif *arvif;
+	struct ath11k_vif *arvif = NULL, *iter;
 	u32 dfs_args[DFS_MAX_TEST_ARGS];
 	struct wmi_unit_test_cmd wmi_ut;
-	bool arvif_found = false;
 
-	list_for_each_entry(arvif, &ar->arvifs, list) {
-		if (arvif->is_started && arvif->vdev_type == WMI_VDEV_TYPE_AP) {
-			arvif_found = true;
+	list_for_each_entry(iter, &ar->arvifs, list) {
+		if (iter->is_started && iter->vdev_type == WMI_VDEV_TYPE_AP) {
+			arvif = iter;
 			break;
 		}
 	}
 
-	if (!arvif_found)
+	if (!arvif)
 		return -EINVAL;
 
 	dfs_args[DFS_TEST_CMDID] = 0;

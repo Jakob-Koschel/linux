@@ -4242,10 +4242,9 @@ int ath11k_dp_process_rxdma_err(struct ath11k_base *ab, int mac_id, int budget)
 
 void ath11k_dp_process_reo_status(struct ath11k_base *ab)
 {
+	struct dp_reo_cmd *cmd = NULL, *iter, *tmp;
 	struct ath11k_dp *dp = &ab->dp;
 	struct hal_srng *srng;
-	struct dp_reo_cmd *cmd, *tmp;
-	bool found = false;
 	u32 *reo_desc;
 	u16 tag;
 	struct hal_reo_status reo_status;
@@ -4296,22 +4295,22 @@ void ath11k_dp_process_reo_status(struct ath11k_base *ab)
 		}
 
 		spin_lock_bh(&dp->reo_cmd_lock);
-		list_for_each_entry_safe(cmd, tmp, &dp->reo_cmd_list, list) {
-			if (reo_status.uniform_hdr.cmd_num == cmd->cmd_num) {
-				found = true;
-				list_del(&cmd->list);
+		cmd = NULL;
+		list_for_each_entry_safe(iter, tmp, &dp->reo_cmd_list, list) {
+			if (reo_status.uniform_hdr.cmd_num == iter->cmd_num) {
+				list_del(&iter->list);
+				cmd = iter;
 				break;
 			}
 		}
 		spin_unlock_bh(&dp->reo_cmd_lock);
 
-		if (found) {
+		if (cmd) {
 			cmd->handler(dp, (void *)&cmd->data,
 				     reo_status.uniform_hdr.cmd_status);
 			kfree(cmd);
 		}
 
-		found = false;
 	}
 
 	ath11k_hal_srng_access_end(ab, srng);
