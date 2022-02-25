@@ -127,20 +127,19 @@ static int search_cap(const char **haystack, const char *needle)
  */
 int request_dma_bycap(const char **dmac, const char **caps, const char *dev_id)
 {
-	unsigned int found = 0;
-	struct dma_info *info;
+	struct dma_info *info = NULL, *iter;
 	const char **p;
 	int i;
 
 	BUG_ON(!dmac || !caps);
 
-	list_for_each_entry(info, &registered_dmac_list, list)
-		if (strcmp(*dmac, info->name) == 0) {
-			found = 1;
+	list_for_each_entry(iter, &registered_dmac_list, list)
+		if (strcmp(*dmac, iter->name) == 0) {
+			info = iter;
 			break;
 		}
 
-	if (!found)
+	if (!info)
 		return -ENODEV;
 
 	for (i = 0; i < info->nr_channels; i++) {
@@ -242,17 +241,16 @@ EXPORT_SYMBOL(dma_wait_for_completion);
 
 int register_chan_caps(const char *dmac, struct dma_chan_caps *caps)
 {
-	struct dma_info *info;
-	unsigned int found = 0;
+	struct dma_info *info = NULL, *iter;
 	int i;
 
-	list_for_each_entry(info, &registered_dmac_list, list)
-		if (strcmp(dmac, info->name) == 0) {
-			found = 1;
+	list_for_each_entry(iter, &registered_dmac_list, list)
+		if (strcmp(dmac, iter->name) == 0) {
+			info = iter;
 			break;
 		}
 
-	if (unlikely(!found))
+	if (unlikely(!info))
 		return -ENODEV;
 
 	for (i = 0; i < info->nr_channels; i++, caps++) {
