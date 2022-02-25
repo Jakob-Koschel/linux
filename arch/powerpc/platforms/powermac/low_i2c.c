@@ -1056,15 +1056,15 @@ EXPORT_SYMBOL_GPL(pmac_i2c_match_adapter);
 
 int pmac_low_i2c_lock(struct device_node *np)
 {
-	struct pmac_i2c_bus *bus, *found = NULL;
+	struct pmac_i2c_bus *bus = NULL, *iter = NULL;
 
-	list_for_each_entry(bus, &pmac_i2c_busses, link) {
-		if (np == bus->controller) {
-			found = bus;
+	list_for_each_entry(iter, &pmac_i2c_busses, link) {
+		if (np == iter->controller) {
+			bus = iter;
 			break;
 		}
 	}
-	if (!found)
+	if (!bus)
 		return -ENODEV;
 	return pmac_i2c_open(bus, 0);
 }
@@ -1072,15 +1072,15 @@ EXPORT_SYMBOL_GPL(pmac_low_i2c_lock);
 
 int pmac_low_i2c_unlock(struct device_node *np)
 {
-	struct pmac_i2c_bus *bus, *found = NULL;
+	struct pmac_i2c_bus *bus = NULL, *iter;
 
-	list_for_each_entry(bus, &pmac_i2c_busses, link) {
-		if (np == bus->controller) {
-			found = bus;
+	list_for_each_entry(iter, &pmac_i2c_busses, link) {
+		if (np == iter->controller) {
+			bus = iter;
 			break;
 		}
 	}
-	if (!found)
+	if (!bus)
 		return -ENODEV;
 	pmac_i2c_close(bus);
 	return 0;
