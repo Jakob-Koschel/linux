@@ -215,7 +215,7 @@ static int process_msg(void)
 		bool in_hdr;
 		unsigned int read;
 	} state;
-	struct xb_req_data *req;
+	struct xb_req_data *req = NULL, *iter;
 	int err;
 	unsigned int len;
 
@@ -289,10 +289,11 @@ static int process_msg(void)
 	} else {
 		err = -ENOENT;
 		mutex_lock(&xb_write_mutex);
-		list_for_each_entry(req, &xs_reply_list, list) {
-			if (req->msg.req_id == state.msg.req_id) {
-				list_del(&req->list);
+		list_for_each_entry(iter, &xs_reply_list, list) {
+			if (iter->msg.req_id == state.msg.req_id) {
+				list_del(&iter->list);
 				err = 0;
+				req = iter;
 				break;
 			}
 		}
