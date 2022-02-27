@@ -1228,22 +1228,23 @@ static int riocm_ch_listen(u16 ch_id)
 static int riocm_ch_bind(u16 ch_id, u8 mport_id, void *context)
 {
 	struct rio_channel *ch = NULL;
-	struct cm_dev *cm;
+	struct cm_dev *cm = NULL, *iter;
 	int rc = -ENODEV;
 
 	riocm_debug(CHOP, "ch_%d to mport_%d", ch_id, mport_id);
 
 	/* Find matching cm_dev object */
 	down_read(&rdev_sem);
-	list_for_each_entry(cm, &cm_dev_list, list) {
-		if ((cm->mport->id == mport_id) &&
-		     rio_mport_is_running(cm->mport)) {
+	list_for_each_entry(iter, &cm_dev_list, list) {
+		if ((iter->mport->id == mport_id) &&
+		     rio_mport_is_running(iter->mport)) {
 			rc = 0;
+			cm = iter;
 			break;
 		}
 	}
 
-	if (rc)
+	if (!cm)
 		goto exit;
 
 	ch = riocm_get_channel(ch_id);
@@ -1778,8 +1779,8 @@ static int cm_chan_accept(struct file *filp, void __user *arg)
 static int cm_chan_connect(void __user *arg)
 {
 	struct rio_cm_channel chan;
-	struct cm_dev *cm;
-	struct cm_peer *peer;
+	struct cm_dev *cm = NULL, *cm_iter;
+	struct cm_peer *peer = NULL, *peer_iter;
 	int ret = -ENODEV;
 
 	if (copy_from_user(&chan, arg, sizeof(chan)))
@@ -1790,14 +1791,15 @@ static int cm_chan_connect(void __user *arg)
 	down_read(&rdev_sem);
 
 	/* Find matching cm_dev object */
-	list_for_each_entry(cm, &cm_dev_list, list) {
-		if (cm->mport->id == chan.mport_id) {
+	list_for_each_entry(cm_iter, &cm_dev_list, list) {
+		if (cm_iter->mport->id == chan.mport_id) {
 			ret = 0;
+			cm = cm_iter;
 			break;
 		}
 	}
 
-	if (ret)
+	if (!cm)
 		goto err_out;
 
 	if (chan.remote_destid >= RIO_ANY_DESTID(cm->mport->sys_size)) {
@@ -1808,14 +1810,15 @@ static int cm_chan_connect(void __user *arg)
 	/* Find corresponding RapidIO endpoint device object */
 	ret = -ENODEV;
 
-	list_for_each_entry(peer, &cm->peers, node) {
-		if (peer->rdev->destid == chan.remote_destid) {
+	list_for_each_entry(peer_iter, &cm->peers, node) {
+		if (peer_iter->rdev->destid == chan.remote_destid) {
 			ret = 0;
+			peer = peer_iter;
 			break;
 		}
 	}
 
-	if (ret)
+	if (!peer)
 		goto err_out;
 
 	up_read(&rdev_sem);
