@@ -4757,7 +4757,7 @@ static void its_enable_quirks(struct its_node *its)
 
 static int its_save_disable(void)
 {
-	struct its_node *its;
+	struct its_node *its, *pos = NULL;
 	int err = 0;
 
 	raw_spin_lock(&its_lock);
@@ -4771,6 +4771,7 @@ static int its_save_disable(void)
 			pr_err("ITS@%pa: failed to quiesce: %d\n",
 			       &its->phys_base, err);
 			writel_relaxed(its->ctlr_save, base + GITS_CTLR);
+			pos = its;
 			goto err;
 		}
 
@@ -4778,7 +4779,8 @@ static int its_save_disable(void)
 	}
 
 err:
-	if (err) {
+	if (pos) {
+		its = pos;
 		list_for_each_entry_continue_reverse(its, &its_nodes, entry) {
 			void __iomem *base;
 
