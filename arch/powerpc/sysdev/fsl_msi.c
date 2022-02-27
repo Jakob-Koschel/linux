@@ -180,7 +180,7 @@ static int fsl_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 	unsigned int virq;
 	struct msi_desc *entry;
 	struct msi_msg msg;
-	struct fsl_msi *msi_data;
+	struct fsl_msi *msi_data = NULL, *iter;
 
 	if (type == PCI_CAP_ID_MSI) {
 		/*
@@ -188,8 +188,8 @@ static int fsl_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 		 * could not work. So check to prevent MSI from
 		 * being used on the board with this erratum.
 		 */
-		list_for_each_entry(msi_data, &msi_head, list)
-			if (msi_data->feature & MSI_HW_ERRATA_ENDIAN)
+		list_for_each_entry(iter, &msi_head, list)
+			if (iter->feature & MSI_HW_ERRATA_ENDIAN)
 				return -EINVAL;
 	}
 
@@ -216,7 +216,7 @@ static int fsl_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 		 * Loop over all the MSI devices until we find one that has an
 		 * available interrupt.
 		 */
-		list_for_each_entry(msi_data, &msi_head, list) {
+		list_for_each_entry(iter, &msi_head, list) {
 			/*
 			 * If the PCI node has an fsl,msi property, then we
 			 * restrict our search to the corresponding MSI node.
@@ -225,15 +225,17 @@ static int fsl_setup_msi_irqs(struct pci_dev *pdev, int nvec, int type)
 			 * has the additional benefit of skipping over MSI
 			 * nodes that are not mapped in the PAMU.
 			 */
-			if (phandle && (phandle != msi_data->phandle))
+			if (phandle && (phandle != iter->phandle))
 				continue;
 
-			hwirq = msi_bitmap_alloc_hwirqs(&msi_data->bitmap, 1);
-			if (hwirq >= 0)
+			hwirq = msi_bitmap_alloc_hwirqs(&iter->bitmap, 1);
+			if (hwirq >= 0) {
+				msi_data = iter;
 				break;
+			}
 		}
 
-		if (hwirq < 0) {
+		if (!msi_data) {
 			rc = hwirq;
 			dev_err(&pdev->dev, "could not allocate MSI interrupt\n");
 			goto out_free;
