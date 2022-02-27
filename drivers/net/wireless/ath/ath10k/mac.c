@@ -478,7 +478,7 @@ static int ath10k_clear_vdev_key(struct ath10k_vif *arvif,
 				 struct ieee80211_key_conf *key)
 {
 	struct ath10k *ar = arvif->ar;
-	struct ath10k_peer *peer;
+	struct ath10k_peer *peer = NULL, *iter;
 	u8 addr[ETH_ALEN];
 	int first_errno = 0;
 	int ret;
@@ -493,21 +493,23 @@ static int ath10k_clear_vdev_key(struct ath10k_vif *arvif,
 		 */
 		spin_lock_bh(&ar->data_lock);
 		i = 0;
-		list_for_each_entry(peer, &ar->peers, list) {
-			for (i = 0; i < ARRAY_SIZE(peer->keys); i++) {
-				if (peer->keys[i] == key) {
-					ether_addr_copy(addr, peer->addr);
-					peer->keys[i] = NULL;
+		list_for_each_entry(iter, &ar->peers, list) {
+			for (i = 0; i < ARRAY_SIZE(iter->keys); i++) {
+				if (iter->keys[i] == key) {
+					ether_addr_copy(addr, iter->addr);
+					iter->keys[i] = NULL;
 					break;
 				}
 			}
 
-			if (i < ARRAY_SIZE(peer->keys))
+			if (i < ARRAY_SIZE(iter->keys)) {
+				peer = iter;
 				break;
+			}
 		}
 		spin_unlock_bh(&ar->data_lock);
 
-		if (i == ARRAY_SIZE(peer->keys))
+		if (!peer)
 			break;
 		/* key flags are not required to delete the key */
 		ret = ath10k_install_key(arvif, key, DISABLE_KEY, addr, flags);
