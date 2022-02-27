@@ -1290,19 +1290,21 @@ EXPORT_SYMBOL_GPL(vb2_ops_wait_finish);
  */
 int vb2_request_validate(struct media_request *req)
 {
-	struct media_request_object *obj;
+	struct media_request_object *obj = NULL, *iter;
 	int ret = 0;
 
 	if (!vb2_request_buffer_cnt(req))
 		return -ENOENT;
 
-	list_for_each_entry(obj, &req->objects, list) {
-		if (!obj->ops->prepare)
+	list_for_each_entry(iter, &req->objects, list) {
+		if (!iter->ops->prepare)
 			continue;
 
-		ret = obj->ops->prepare(obj);
-		if (ret)
+		ret = iter->ops->prepare(iter);
+		if (ret) {
+			obj = iter;
 			break;
+		}
 	}
 
 	if (ret) {
