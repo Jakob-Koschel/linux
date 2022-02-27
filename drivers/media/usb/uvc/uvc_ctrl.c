@@ -1660,15 +1660,17 @@ int __uvc_ctrl_commit(struct uvc_fh *handle, int rollback,
 {
 	struct uvc_video_chain *chain = handle->chain;
 	struct uvc_control *err_ctrl;
-	struct uvc_entity *entity;
+	struct uvc_entity *entity = NULL, *iter;
 	int ret = 0;
 
 	/* Find the control. */
-	list_for_each_entry(entity, &chain->entities, chain) {
-		ret = uvc_ctrl_commit_entity(chain->dev, entity, rollback,
+	list_for_each_entry(iter, &chain->entities, chain) {
+		ret = uvc_ctrl_commit_entity(chain->dev, iter, rollback,
 					     &err_ctrl);
-		if (ret < 0)
+		if (ret < 0) {
+			entity = iter;
 			goto done;
+		}
 	}
 
 	if (!rollback)
