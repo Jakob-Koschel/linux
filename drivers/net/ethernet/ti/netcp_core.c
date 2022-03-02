@@ -472,7 +472,7 @@ int netcp_register_txhook(struct netcp_intf *netcp_priv, int order,
 			  netcp_hook_rtn *hook_rtn, void *hook_data)
 {
 	struct netcp_hook_list *entry;
-	struct netcp_hook_list *next;
+	struct netcp_hook_list *next = NULL, *iter;
 	unsigned long flags;
 
 	entry = devm_kzalloc(netcp_priv->dev, sizeof(*entry), GFP_KERNEL);
@@ -484,11 +484,15 @@ int netcp_register_txhook(struct netcp_intf *netcp_priv, int order,
 	entry->order     = order;
 
 	spin_lock_irqsave(&netcp_priv->lock, flags);
-	list_for_each_entry(next, &netcp_priv->txhook_list_head, list) {
-		if (next->order > order)
+	list_for_each_entry(iter, &netcp_priv->txhook_list_head, list) {
+		if (iter->order > order) {
+			next = iter;
+			list_add_tail(&entry->list, &iter->list);
 			break;
+		}
 	}
-	__list_add(&entry->list, next->list.prev, &next->list);
+	if (!next)
+		list_add_tail(&entry->list, &netcp_priv->txhook_list_head);
 	spin_unlock_irqrestore(&netcp_priv->lock, flags);
 
 	return 0;
@@ -521,7 +525,7 @@ int netcp_register_rxhook(struct netcp_intf *netcp_priv, int order,
 			  netcp_hook_rtn *hook_rtn, void *hook_data)
 {
 	struct netcp_hook_list *entry;
-	struct netcp_hook_list *next;
+	struct netcp_hook_list *next = NULL, *iter;
 	unsigned long flags;
 
 	entry = devm_kzalloc(netcp_priv->dev, sizeof(*entry), GFP_KERNEL);
@@ -533,11 +537,15 @@ int netcp_register_rxhook(struct netcp_intf *netcp_priv, int order,
 	entry->order     = order;
 
 	spin_lock_irqsave(&netcp_priv->lock, flags);
-	list_for_each_entry(next, &netcp_priv->rxhook_list_head, list) {
-		if (next->order > order)
+	list_for_each_entry(iter, &netcp_priv->rxhook_list_head, list) {
+		if (iter->order > order) {
+			next = iter;
+			list_add_tail(&entry->list, &iter->list);
 			break;
+		}
 	}
-	__list_add(&entry->list, next->list.prev, &next->list);
+	if (!next)
+		list_add_tail(&entry->list, &netcp_priv->rxhook_list_head);
 	spin_unlock_irqrestore(&netcp_priv->lock, flags);
 
 	return 0;
