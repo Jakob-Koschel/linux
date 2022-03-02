@@ -246,7 +246,7 @@ int mlx4_zone_add_one(struct mlx4_zone_allocator *zone_alloc,
 		      u32 *puid)
 {
 	u32 mask = mlx4_bitmap_masked_value(bitmap, (u32)-1);
-	struct mlx4_zone_entry *it;
+	struct mlx4_zone_entry *it = NULL, *iter;
 	struct mlx4_zone_entry *zone = kmalloc(sizeof(*zone), GFP_KERNEL);
 
 	if (NULL == zone)
@@ -266,13 +266,20 @@ int mlx4_zone_add_one(struct mlx4_zone_allocator *zone_alloc,
 	if (zone_alloc->mask < mask)
 		zone_alloc->mask = mask;
 
-	list_for_each_entry(it, &zone_alloc->prios, prio_list)
-		if (it->priority >= priority)
+	list_for_each_entry(iter, &zone_alloc->prios, prio_list)
+		if (iter->priority >= priority) {
+			it = iter;
 			break;
+		}
 
-	if (&it->prio_list == &zone_alloc->prios || it->priority > priority)
-		list_add_tail(&zone->prio_list, &it->prio_list);
-	list_add_tail(&zone->list, &it->list);
+	if (it) {
+		if (it->priority > priority)
+			list_add_tail(&zone->prio_list, &it->prio_list);
+		list_add_tail(&zone->list, &it->list);
+	} else {
+		list_add_tail(&zone->prio_list, &zone_alloc->prios);
+		list_add_tail(&zone->list, &zone_alloc->entries);
+	}
 
 	spin_unlock(&zone_alloc->lock);
 
