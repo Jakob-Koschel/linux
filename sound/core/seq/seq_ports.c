@@ -113,7 +113,7 @@ static void port_subs_info_init(struct snd_seq_port_subs_info *grp)
 struct snd_seq_client_port *snd_seq_create_port(struct snd_seq_client *client,
 						int port)
 {
-	struct snd_seq_client_port *new_port, *p;
+	struct snd_seq_client_port *new_port, *p = NULL, *iter;
 	int num = -1;
 	
 	/* sanity check */
@@ -142,14 +142,19 @@ struct snd_seq_client_port *snd_seq_create_port(struct snd_seq_client *client,
 	num = port >= 0 ? port : 0;
 	mutex_lock(&client->ports_mutex);
 	write_lock_irq(&client->ports_lock);
-	list_for_each_entry(p, &client->ports_list_head, list) {
-		if (p->addr.port > num)
+	list_for_each_entry(iter, &client->ports_list_head, list) {
+		if (iter->addr.port > num) {
+			p = iter;
+			/* insert the new port */
+			list_add_tail(&new_port->list, &iter->list);
 			break;
+		}
 		if (port < 0) /* auto-probe mode */
-			num = p->addr.port + 1;
+			num = iter->addr.port + 1;
 	}
 	/* insert the new port */
-	list_add_tail(&new_port->list, &p->list);
+	if (!p)
+		list_add_tail(&new_port->list, &client->ports_list_head);
 	client->num_ports++;
 	new_port->addr.port = num;	/* store the port number in the port */
 	sprintf(new_port->name, "port-%d", num);
