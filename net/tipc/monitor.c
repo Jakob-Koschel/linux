@@ -390,8 +390,8 @@ exit:
 static bool tipc_mon_add_peer(struct tipc_monitor *mon, u32 addr,
 			      struct tipc_peer **peer)
 {
+	struct tipc_peer *cur = NULL, *iter, *prev, *p;
 	struct tipc_peer *self = mon->self;
-	struct tipc_peer *cur, *prev, *p;
 
 	p = kzalloc(sizeof(*p), GFP_ATOMIC);
 	*peer = p;
@@ -405,15 +405,22 @@ static bool tipc_mon_add_peer(struct tipc_monitor *mon, u32 addr,
 
 	/* Sort new peer into iterator list, in ascending circular order */
 	prev = self;
-	list_for_each_entry(cur, &self->list, list) {
-		if ((addr > prev->addr) && (addr < cur->addr))
+	list_for_each_entry(iter, &self->list, list) {
+		if (addr > prev->addr && addr < iter->addr) {
+			cur = iter;
+			list_add_tail(&p->list, &iter->list);
 			break;
-		if (((addr < cur->addr) || (addr > prev->addr)) &&
-		    (prev->addr > cur->addr))
+		}
+		if ((addr < iter->addr || addr > prev->addr) &&
+		    prev->addr > iter->addr) {
+			cur = iter;
+			list_add_tail(&p->list, &iter->list);
 			break;
-		prev = cur;
+		}
+		prev = iter;
 	}
-	list_add_tail(&p->list, &cur->list);
+	if (!cur)
+		list_add_tail(&p->list, &self->list);
 	mon->peer_cnt++;
 	mon_update_neighbors(mon, p);
 	return true;
