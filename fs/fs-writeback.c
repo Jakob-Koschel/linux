@@ -427,14 +427,18 @@ static bool inode_do_switch_wbs(struct inode *inode,
 		inode->i_wb = new_wb;
 
 		if (inode->i_state & I_DIRTY_ALL) {
-			struct inode *pos;
+			struct inode *iter;
+			struct list_head *pos = NULL;
 
-			list_for_each_entry(pos, &new_wb->b_dirty, i_io_list)
+			list_for_each_entry(iter, &new_wb->b_dirty, i_io_list)
 				if (time_after_eq(inode->dirtied_when,
-						  pos->dirtied_when))
+						  iter->dirtied_when)) {
+					pos = iter->i_io_list.prev;
 					break;
-			inode_io_list_move_locked(inode, new_wb,
-						  pos->i_io_list.prev);
+				}
+			if (!pos)
+				pos = new_wb->b_dirty.prev;
+			inode_io_list_move_locked(inode, new_wb, pos);
 		} else {
 			inode_cgwb_move_to_attached(inode, new_wb);
 		}
