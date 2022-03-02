@@ -28,14 +28,18 @@ int gro_normal_batch __read_mostly = 8;
  */
 void dev_add_offload(struct packet_offload *po)
 {
-	struct packet_offload *elem;
+	struct packet_offload *elem = NULL, *iter;
 
 	spin_lock(&offload_lock);
-	list_for_each_entry(elem, &offload_base, list) {
-		if (po->priority < elem->priority)
+	list_for_each_entry(iter, &offload_base, list) {
+		if (po->priority < iter->priority) {
+			elem = iter;
+			list_add_rcu(&po->list, iter->list.prev);
 			break;
+		}
 	}
-	list_add_rcu(&po->list, elem->list.prev);
+	if (!elem)
+		list_add_rcu(&po->list, offload_base.prev);
 	spin_unlock(&offload_lock);
 }
 EXPORT_SYMBOL(dev_add_offload);
