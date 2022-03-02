@@ -90,7 +90,7 @@ struct static_vm *find_static_vm_vaddr(void *vaddr)
 
 void __init add_static_vm_early(struct static_vm *svm)
 {
-	struct static_vm *curr_svm;
+	struct static_vm *curr_svm = NULL, *iter;
 	struct vm_struct *vm;
 	void *vaddr;
 
@@ -98,13 +98,17 @@ void __init add_static_vm_early(struct static_vm *svm)
 	vm_area_add_early(vm);
 	vaddr = vm->addr;
 
-	list_for_each_entry(curr_svm, &static_vmlist, list) {
-		vm = &curr_svm->vm;
+	list_for_each_entry(iter, &static_vmlist, list) {
+		vm = &iter->vm;
 
-		if (vm->addr > vaddr)
+		if (vm->addr > vaddr) {
+			curr_svm = iter;
+			list_add_tail(&svm->list, &iter->list);
 			break;
+		}
 	}
-	list_add_tail(&svm->list, &curr_svm->list);
+	if (!curr_svm)
+		list_add_tail(&svm->list, &static_vmlist);
 }
 
 int ioremap_page(unsigned long virt, unsigned long phys,
