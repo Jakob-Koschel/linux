@@ -578,7 +578,7 @@ static void lateeoi_list_del(struct irq_info *info)
 static void lateeoi_list_add(struct irq_info *info)
 {
 	struct lateeoi_work *eoi = &per_cpu(lateeoi, info->eoi_cpu);
-	struct irq_info *elem;
+	struct irq_info *elem = NULL, *iter;
 	u64 now = get_jiffies_64();
 	unsigned long delay;
 	unsigned long flags;
@@ -595,11 +595,15 @@ static void lateeoi_list_add(struct irq_info *info)
 		mod_delayed_work_on(info->eoi_cpu, system_wq,
 				    &eoi->delayed, delay);
 	} else {
-		list_for_each_entry_reverse(elem, &eoi->eoi_list, eoi_list) {
-			if (elem->eoi_time <= info->eoi_time)
+		list_for_each_entry_reverse(iter, &eoi->eoi_list, eoi_list) {
+			if (iter->eoi_time <= info->eoi_time) {
+				elem = iter;
+				list_add(&info->eoi_list, &iter->eoi_list);
 				break;
+			}
 		}
-		list_add(&info->eoi_list, &elem->eoi_list);
+		if (!elem)
+			list_add(&info->eoi_list, &eoi->eoi_list);
 	}
 
 	spin_unlock_irqrestore(&eoi->eoi_list_lock, flags);
