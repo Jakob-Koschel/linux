@@ -528,13 +528,17 @@ static int __validate_exception_handover(struct dm_snapshot *snap)
 
 static void __insert_snapshot(struct origin *o, struct dm_snapshot *s)
 {
-	struct dm_snapshot *l;
+	struct dm_snapshot *l = NULL, *iter;
 
 	/* Sort the list according to chunk size, largest-first smallest-last */
-	list_for_each_entry(l, &o->snapshots, list)
-		if (l->store->chunk_size < s->store->chunk_size)
+	list_for_each_entry(iter, &o->snapshots, list)
+		if (iter->store->chunk_size < s->store->chunk_size) {
+			l = iter;
+			list_add_tail(&s->list, &iter->list);
 			break;
-	list_add_tail(&s->list, &l->list);
+		}
+	if (!l)
+		list_add_tail(&s->list, &o->snapshots);
 }
 
 /*
