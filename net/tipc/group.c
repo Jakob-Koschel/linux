@@ -371,8 +371,8 @@ void tipc_group_self(struct tipc_group *grp, struct tipc_service_range *seq,
 
 void tipc_group_update_member(struct tipc_member *m, int len)
 {
+	struct tipc_member *found_m = NULL, *iter, *tmp;
 	struct tipc_group *grp = m->group;
-	struct tipc_member *_m, *tmp;
 
 	if (!tipc_group_is_receiver(m))
 		return;
@@ -385,11 +385,15 @@ void tipc_group_update_member(struct tipc_member *m, int len)
 	list_del_init(&m->small_win);
 
 	/* Sort member into small_window members' list */
-	list_for_each_entry_safe(_m, tmp, &grp->small_win, small_win) {
-		if (_m->window > m->window)
+	list_for_each_entry_safe(iter, tmp, &grp->small_win, small_win) {
+		if (iter->window > m->window) {
+			found_m = iter;
+			list_add_tail(&m->small_win, &iter->small_win);
 			break;
+		}
 	}
-	list_add_tail(&m->small_win, &_m->small_win);
+	if (!found_m)
+		list_add_tail(&m->small_win, &grp->small_win);
 }
 
 void tipc_group_update_bc_members(struct tipc_group *grp, int len, bool ack)
