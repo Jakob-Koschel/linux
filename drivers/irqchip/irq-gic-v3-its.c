@@ -2071,7 +2071,7 @@ static void merge_lpi_ranges(struct lpi_range *a, struct lpi_range *b)
 
 static int free_lpi_range(u32 base, u32 nr_lpis)
 {
-	struct lpi_range *new, *old;
+	struct lpi_range *new, *old = NULL, *iter;
 
 	new = mk_lpi_range(base, nr_lpis);
 	if (!new)
@@ -2079,23 +2079,28 @@ static int free_lpi_range(u32 base, u32 nr_lpis)
 
 	mutex_lock(&lpi_range_lock);
 
-	list_for_each_entry_reverse(old, &lpi_range_list, entry) {
-		if (old->base_id < base)
+	list_for_each_entry_reverse(iter, &lpi_range_list, entry) {
+		if (iter->base_id < base) {
+			old = iter;
+			list_add(&new->entry, &iter->entry);
 			break;
+		}
 	}
 	/*
-	 * old is the last element with ->base_id smaller than base,
-	 * so new goes right after it. If there are no elements with
-	 * ->base_id smaller than base, &old->entry ends up pointing
-	 * at the head of the list, and inserting new it the start of
+	 * If there are no elements with ->base_id smaller than base,
+	 * old is NULL and then inserting new in the start of
 	 * the list is the right thing to do in that case as well.
 	 */
-	list_add(&new->entry, &old->entry);
+	if (!old)
+		list_add(&new->entry, &lpi_range_list);
 	/*
 	 * Now check if we can merge with the preceding and/or
 	 * following ranges.
+	 * If no element was found, the old and new ranges don't
+	 * need merging.
 	 */
-	merge_lpi_ranges(old, new);
+	if (!old)
+		merge_lpi_ranges(old, new);
 	merge_lpi_ranges(new, list_next_entry(new, entry));
 
 	mutex_unlock(&lpi_range_lock);
