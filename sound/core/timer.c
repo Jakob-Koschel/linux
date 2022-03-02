@@ -1017,7 +1017,7 @@ static int snd_timer_dev_free(struct snd_device *device)
 static int snd_timer_dev_register(struct snd_device *dev)
 {
 	struct snd_timer *timer = dev->device_data;
-	struct snd_timer *timer1;
+	struct snd_timer *timer1 = NULL, *iter;
 
 	if (snd_BUG_ON(!timer || !timer->hw.start || !timer->hw.stop))
 		return -ENXIO;
@@ -1026,30 +1026,41 @@ static int snd_timer_dev_register(struct snd_device *dev)
 	    	return -EINVAL;
 
 	mutex_lock(&register_mutex);
-	list_for_each_entry(timer1, &snd_timer_list, device_list) {
-		if (timer1->tmr_class > timer->tmr_class)
+	list_for_each_entry(iter, &snd_timer_list, device_list) {
+		if (iter->tmr_class > timer->tmr_class) {
+			timer1 = iter;
 			break;
-		if (timer1->tmr_class < timer->tmr_class)
+		}
+		if (iter->tmr_class < timer->tmr_class)
 			continue;
-		if (timer1->card && timer->card) {
-			if (timer1->card->number > timer->card->number)
+		if (iter->card && timer->card) {
+			if (iter->card->number > timer->card->number) {
+				timer1 = iter;
 				break;
-			if (timer1->card->number < timer->card->number)
+			}
+			if (iter->card->number < timer->card->number)
 				continue;
 		}
-		if (timer1->tmr_device > timer->tmr_device)
+		if (iter->tmr_device > timer->tmr_device) {
+			timer1 = iter;
 			break;
-		if (timer1->tmr_device < timer->tmr_device)
+		}
+		if (iter->tmr_device < timer->tmr_device)
 			continue;
-		if (timer1->tmr_subdevice > timer->tmr_subdevice)
+		if (iter->tmr_subdevice > timer->tmr_subdevice) {
+			timer1 = iter;
 			break;
-		if (timer1->tmr_subdevice < timer->tmr_subdevice)
+		}
+		if (iter->tmr_subdevice < timer->tmr_subdevice)
 			continue;
 		/* conflicts.. */
 		mutex_unlock(&register_mutex);
 		return -EBUSY;
 	}
-	list_add_tail(&timer->device_list, &timer1->device_list);
+	if (timer1)
+		list_add_tail(&timer->device_list, &timer1->device_list);
+	else
+		list_add_tail(&timer->device_list, &snd_timer_list);
 	mutex_unlock(&register_mutex);
 	return 0;
 }
