@@ -4175,16 +4175,20 @@ static void release_sit_entry_set(struct sit_entry_set *ses)
 static void adjust_sit_entry_set(struct sit_entry_set *ses,
 						struct list_head *head)
 {
-	struct sit_entry_set *next = ses;
+	struct sit_entry_set *next = NULL, *iter = ses;
 
 	if (list_is_last(&ses->set_list, head))
 		return;
 
-	list_for_each_entry_continue(next, head, set_list)
-		if (ses->entry_cnt <= next->entry_cnt)
+	list_for_each_entry_continue(iter, head, set_list)
+		if (ses->entry_cnt <= iter->entry_cnt) {
+			next = iter;
+			list_move_tail(&ses->set_list, &iter->set_list);
 			break;
+		}
 
-	list_move_tail(&ses->set_list, &next->set_list);
+	if (!next)
+		list_move_tail(&ses->set_list, head);
 }
 
 static void add_sit_entry(unsigned int segno, struct list_head *head)
