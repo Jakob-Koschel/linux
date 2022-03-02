@@ -27,20 +27,24 @@ static int sja1105_insert_gate_entry(struct sja1105_gating_config *gating_cfg,
 	if (list_empty(&gating_cfg->entries)) {
 		list_add(&e->list, &gating_cfg->entries);
 	} else {
-		struct sja1105_gate_entry *p;
+		struct sja1105_gate_entry *p = NULL, *iter;
 
-		list_for_each_entry(p, &gating_cfg->entries, list) {
-			if (p->interval == e->interval) {
+		list_for_each_entry(iter, &gating_cfg->entries, list) {
+			if (iter->interval == e->interval) {
 				NL_SET_ERR_MSG_MOD(extack,
 						   "Gate conflict");
 				rc = -EBUSY;
 				goto err;
 			}
 
-			if (e->interval < p->interval)
+			if (e->interval < iter->interval) {
+				p = iter;
+				list_add(&e->list, iter->list.prev);
 				break;
+			}
 		}
-		list_add(&e->list, p->list.prev);
+		if (!p)
+			list_add(&e->list, gating_cfg->entries.prev);
 	}
 
 	gating_cfg->num_entries++;
