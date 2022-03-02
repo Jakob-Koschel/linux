@@ -364,12 +364,11 @@ static struct spu *ctx_location(struct spu *ref, int offset, int node)
 {
 	struct spu *spu;
 
-	spu = NULL;
 	if (offset >= 0) {
 		list_for_each_entry(spu, ref->aff_list.prev, aff_list) {
 			BUG_ON(spu->node != node);
 			if (offset == 0)
-				break;
+				return spu;
 			if (sched_spu(spu))
 				offset--;
 		}
@@ -377,13 +376,13 @@ static struct spu *ctx_location(struct spu *ref, int offset, int node)
 		list_for_each_entry_reverse(spu, ref->aff_list.next, aff_list) {
 			BUG_ON(spu->node != node);
 			if (offset == 0)
-				break;
+				return spu;
 			if (sched_spu(spu))
 				offset++;
 		}
 	}
 
-	return spu;
+	return NULL;
 }
 
 /*
