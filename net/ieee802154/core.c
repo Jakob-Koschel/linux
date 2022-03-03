@@ -198,7 +198,7 @@ EXPORT_SYMBOL(wpan_phy_free);
 int cfg802154_switch_netns(struct cfg802154_registered_device *rdev,
 			   struct net *net)
 {
-	struct wpan_dev *wpan_dev;
+	struct wpan_dev *wpan_dev, *tmp = NULL;
 	int err = 0;
 
 	list_for_each_entry(wpan_dev, &rdev->wpan_dev_list, list) {
@@ -206,8 +206,10 @@ int cfg802154_switch_netns(struct cfg802154_registered_device *rdev,
 			continue;
 		wpan_dev->netdev->features &= ~NETIF_F_NETNS_LOCAL;
 		err = dev_change_net_namespace(wpan_dev->netdev, net, "wpan%d");
-		if (err)
+		if (err) {
+			tmp = wpan_dev;
 			break;
+		}
 		wpan_dev->netdev->features |= NETIF_F_NETNS_LOCAL;
 	}
 
@@ -215,6 +217,7 @@ int cfg802154_switch_netns(struct cfg802154_registered_device *rdev,
 		/* failed -- clean up to old netns */
 		net = wpan_phy_net(&rdev->wpan_phy);
 
+		wpan_dev = list_prepare_entry(tmp, &rdev->wpan_dev_list, list);
 		list_for_each_entry_continue_reverse(wpan_dev,
 						     &rdev->wpan_dev_list,
 						     list) {
