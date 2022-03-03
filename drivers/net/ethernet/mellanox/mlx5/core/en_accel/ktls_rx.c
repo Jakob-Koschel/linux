@@ -682,7 +682,7 @@ void mlx5e_ktls_del_rx(struct net_device *netdev, struct tls_context *tls_ctx)
 
 bool mlx5e_ktls_rx_handle_resync_list(struct mlx5e_channel *c, int budget)
 {
-	struct mlx5e_ktls_offload_context_rx *priv_rx, *tmp;
+	struct mlx5e_ktls_offload_context_rx *priv_rx = NULL, *iter, *tmp;
 	struct mlx5e_ktls_resync_resp *ktls_resync;
 	struct mlx5_wqe_ctrl_seg *db_cseg;
 	struct mlx5e_icosq *sq;
@@ -699,10 +699,12 @@ bool mlx5e_ktls_rx_handle_resync_list(struct mlx5e_channel *c, int budget)
 	i = 0;
 
 	spin_lock(&ktls_resync->lock);
-	list_for_each_entry_safe(priv_rx, tmp, &ktls_resync->list, list) {
-		list_move(&priv_rx->list, &local_list);
-		if (++i == budget)
+	list_for_each_entry_safe(iter, tmp, &ktls_resync->list, list) {
+		list_move(&iter->list, &local_list);
+		if (++i == budget) {
+			priv_rx = iter;
 			break;
+		}
 	}
 	if (list_empty(&ktls_resync->list))
 		clear_bit(MLX5E_SQ_STATE_PENDING_TLS_RX_RESYNC, &sq->state);
@@ -729,6 +731,7 @@ bool mlx5e_ktls_rx_handle_resync_list(struct mlx5e_channel *c, int budget)
 		mlx5e_notify_hw(&sq->wq, sq->pc, sq->uar_map, db_cseg);
 	spin_unlock(&c->async_icosq_lock);
 
+	BUG_ON(!priv_rx);
 	priv_rx->rq_stats->tls_resync_res_ok += j;
 
 	if (!list_empty(&local_list)) {
