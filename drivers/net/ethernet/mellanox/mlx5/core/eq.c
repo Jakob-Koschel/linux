@@ -977,13 +977,17 @@ struct cpumask *
 mlx5_comp_irq_get_affinity_mask(struct mlx5_core_dev *dev, int vector)
 {
 	struct mlx5_eq_table *table = dev->priv.eq_table;
-	struct mlx5_eq_comp *eq, *n;
+	struct mlx5_eq_comp *eq = NULL, *iter, *n;
 	int i = 0;
 
-	list_for_each_entry_safe(eq, n, &table->comp_eqs_list, list) {
-		if (i++ == vector)
+	list_for_each_entry_safe(iter, n, &table->comp_eqs_list, list) {
+		if (i++ == vector) {
+			eq = iter;
 			break;
+		}
 	}
+
+	BUG_ON(!eq);
 
 	return mlx5_irq_get_affinity_mask(eq->core.irq);
 }
