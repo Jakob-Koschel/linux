@@ -155,7 +155,7 @@ int cfg80211_dev_rename(struct cfg80211_registered_device *rdev,
 int cfg80211_switch_netns(struct cfg80211_registered_device *rdev,
 			  struct net *net)
 {
-	struct wireless_dev *wdev;
+	struct wireless_dev *wdev, *tmp = NULL;
 	int err = 0;
 
 	if (!(rdev->wiphy.flags & WIPHY_FLAG_NETNS_OK))
@@ -166,8 +166,10 @@ int cfg80211_switch_netns(struct cfg80211_registered_device *rdev,
 			continue;
 		wdev->netdev->features &= ~NETIF_F_NETNS_LOCAL;
 		err = dev_change_net_namespace(wdev->netdev, net, "wlan%d");
-		if (err)
+		if (err) {
+			tmp = wdev;
 			break;
+		}
 		wdev->netdev->features |= NETIF_F_NETNS_LOCAL;
 	}
 
@@ -175,6 +177,7 @@ int cfg80211_switch_netns(struct cfg80211_registered_device *rdev,
 		/* failed -- clean up to old netns */
 		net = wiphy_net(&rdev->wiphy);
 
+		wdev = list_prepare_entry(tmp, &rdev->wiphy.wdev_list, list);
 		list_for_each_entry_continue_reverse(wdev,
 						     &rdev->wiphy.wdev_list,
 						     list) {
