@@ -1081,18 +1081,21 @@ int __efivar_entry_iter(int (*func)(struct efivar_entry *, void *),
 			struct list_head *head, void *data,
 			struct efivar_entry **prev)
 {
-	struct efivar_entry *entry, *n;
+	struct efivar_entry *entry = NULL, *iter, *n;
 	int err = 0;
 
 	if (!prev || !*prev) {
-		list_for_each_entry_safe(entry, n, head, list) {
-			err = func(entry, data);
-			if (err)
+		list_for_each_entry_safe(iter, n, head, list) {
+			err = func(iter, data);
+			if (err) {
+				entry = iter;
 				break;
+			}
 		}
 
-		if (prev)
+		if (prev) {
 			*prev = entry;
+		}
 
 		return err;
 	}
