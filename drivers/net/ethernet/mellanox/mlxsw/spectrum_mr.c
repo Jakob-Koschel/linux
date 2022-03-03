@@ -624,7 +624,7 @@ static int mlxsw_sp_mr_vif_resolve(struct mlxsw_sp_mr_table *mr_table,
 				   unsigned long vif_flags,
 				   const struct mlxsw_sp_rif *rif)
 {
-	struct mlxsw_sp_mr_route_vif_entry *irve, *erve;
+	struct mlxsw_sp_mr_route_vif_entry *irve, *erve, *tmp1 = NULL, *tmp2 = NULL;
 	int err;
 
 	/* Update the VIF */
@@ -635,23 +635,29 @@ static int mlxsw_sp_mr_vif_resolve(struct mlxsw_sp_mr_table *mr_table,
 	/* Update all routes where this VIF is used as an unresolved iRIF */
 	list_for_each_entry(irve, &mr_vif->route_ivif_list, vif_node) {
 		err = mlxsw_sp_mr_route_ivif_resolve(mr_table, irve);
-		if (err)
+		if (err) {
+			tmp1 = irve;
 			goto err_irif_unresolve;
+		}
 	}
 
 	/* Update all routes where this VIF is used as an unresolved eRIF */
 	list_for_each_entry(erve, &mr_vif->route_evif_list, vif_node) {
 		err = mlxsw_sp_mr_route_evif_resolve(mr_table, erve);
-		if (err)
+		if (err) {
+			tmp2 = erve;
 			goto err_erif_unresolve;
+		}
 	}
 	return 0;
 
 err_erif_unresolve:
+	erve = list_prepare_entry(tmp2, &mr_vif->route_evif_list, vif_node);
 	list_for_each_entry_continue_reverse(erve, &mr_vif->route_evif_list,
 					     vif_node)
 		mlxsw_sp_mr_route_evif_unresolve(mr_table, erve);
 err_irif_unresolve:
+	irve = list_prepare_entry(tmp1, &mr_vif->route_ivif_list, vif_node);
 	list_for_each_entry_continue_reverse(irve, &mr_vif->route_ivif_list,
 					     vif_node)
 		mlxsw_sp_mr_route_ivif_unresolve(mr_table, irve);

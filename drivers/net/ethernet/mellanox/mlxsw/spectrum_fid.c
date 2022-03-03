@@ -506,7 +506,7 @@ static u16 mlxsw_sp_fid_8021d_flood_index(const struct mlxsw_sp_fid *fid)
 static int mlxsw_sp_port_vp_mode_trans(struct mlxsw_sp_port *mlxsw_sp_port)
 {
 	struct mlxsw_sp *mlxsw_sp = mlxsw_sp_port->mlxsw_sp;
-	struct mlxsw_sp_port_vlan *mlxsw_sp_port_vlan;
+	struct mlxsw_sp_port_vlan *mlxsw_sp_port_vlan, *tmp = NULL;
 	int err;
 
 	list_for_each_entry(mlxsw_sp_port_vlan, &mlxsw_sp_port->vlans_list,
@@ -520,8 +520,10 @@ static int mlxsw_sp_port_vp_mode_trans(struct mlxsw_sp_port *mlxsw_sp_port)
 		err = __mlxsw_sp_fid_port_vid_map(mlxsw_sp, fid->fid_index,
 						  mlxsw_sp_port->local_port,
 						  vid, true);
-		if (err)
+		if (err) {
+			tmp = mlxsw_sp_port_vlan;
 			goto err_fid_port_vid_map;
+		}
 	}
 
 	err = mlxsw_sp_port_vp_mode_set(mlxsw_sp_port, true);
@@ -532,6 +534,7 @@ static int mlxsw_sp_port_vp_mode_trans(struct mlxsw_sp_port *mlxsw_sp_port)
 
 err_port_vp_mode_set:
 err_fid_port_vid_map:
+	mlxsw_sp_port_vlan = list_prepare_entry(tmp, &mlxsw_sp_port->vlans_list, list);
 	list_for_each_entry_continue_reverse(mlxsw_sp_port_vlan,
 					     &mlxsw_sp_port->vlans_list, list) {
 		struct mlxsw_sp_fid *fid = mlxsw_sp_port_vlan->fid;
