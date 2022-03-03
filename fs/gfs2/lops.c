@@ -653,7 +653,7 @@ static void gfs2_before_commit(struct gfs2_sbd *sdp, unsigned int limit,
 				bool is_databuf)
 {
 	struct gfs2_log_descriptor *ld;
-	struct gfs2_bufdata *bd1 = NULL, *bd2;
+	struct gfs2_bufdata *bd1 = NULL, *bd2, *tmp1, *tmp2;
 	struct page *page;
 	unsigned int num;
 	unsigned n;
@@ -661,7 +661,7 @@ static void gfs2_before_commit(struct gfs2_sbd *sdp, unsigned int limit,
 
 	gfs2_log_lock(sdp);
 	list_sort(NULL, blist, blocknr_cmp);
-	bd1 = bd2 = list_prepare_entry(bd1, blist, bd_list);
+	tmp1 = tmp2 = list_prepare_entry(bd1, blist, bd_list);
 	while(total) {
 		num = total;
 		if (total > limit)
@@ -675,14 +675,18 @@ static void gfs2_before_commit(struct gfs2_sbd *sdp, unsigned int limit,
 		ptr = (__be64 *)(ld + 1);
 
 		n = 0;
+		bd1 = list_prepare_entry(tmp1, blist, bd_list);
+		tmp1 = NULL;
 		list_for_each_entry_continue(bd1, blist, bd_list) {
 			*ptr++ = cpu_to_be64(bd1->bd_bh->b_blocknr);
 			if (is_databuf) {
 				gfs2_check_magic(bd1->bd_bh);
 				*ptr++ = cpu_to_be64(buffer_escaped(bd1->bd_bh) ? 1 : 0);
 			}
-			if (++n >= num)
+			if (++n >= num) {
+				tmp1 = bd1;
 				break;
+			}
 		}
 
 		gfs2_log_unlock(sdp);
@@ -690,6 +694,8 @@ static void gfs2_before_commit(struct gfs2_sbd *sdp, unsigned int limit,
 		gfs2_log_lock(sdp);
 
 		n = 0;
+		bd2 = list_prepare_entry(tmp2, blist, bd_list);
+		tmp2 = NULL;
 		list_for_each_entry_continue(bd2, blist, bd_list) {
 			get_bh(bd2->bd_bh);
 			gfs2_log_unlock(sdp);
@@ -712,8 +718,10 @@ static void gfs2_before_commit(struct gfs2_sbd *sdp, unsigned int limit,
 				gfs2_log_write_bh(sdp, bd2->bd_bh);
 			}
 			gfs2_log_lock(sdp);
-			if (++n >= num)
+			if (++n >= num) {
+				tmp2 = bd2;
 				break;
+			}
 		}
 
 		BUG_ON(total < num);
