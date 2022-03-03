@@ -2338,7 +2338,7 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 int ieee80211_reconfig(struct ieee80211_local *local)
 {
 	struct ieee80211_hw *hw = &local->hw;
-	struct ieee80211_sub_if_data *sdata;
+	struct ieee80211_sub_if_data *sdata, *tmp = NULL;
 	struct ieee80211_chanctx *ctx;
 	struct sta_info *sta;
 	int res, i;
@@ -2443,8 +2443,10 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		    sdata->vif.type != NL80211_IFTYPE_MONITOR &&
 		    ieee80211_sdata_running(sdata)) {
 			res = drv_add_interface(local, sdata);
-			if (WARN_ON(res))
+			if (WARN_ON(res)) {
+				tmp = sdata;
 				break;
+			}
 		}
 	}
 
@@ -2452,6 +2454,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	 * report failure.
 	 */
 	if (res) {
+		sdata = list_prepare_entry(tmp, &local->interfaces, list);
 		list_for_each_entry_continue_reverse(sdata, &local->interfaces,
 						     list)
 			if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
