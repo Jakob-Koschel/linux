@@ -346,7 +346,7 @@ static u32 __mlx4_alloc_from_zone(struct mlx4_zone_entry *zone, int count,
 	u32 uid = 0;
 	u32 res;
 	struct mlx4_zone_allocator *zone_alloc = zone->allocator;
-	struct mlx4_zone_entry *curr_node;
+	struct mlx4_zone_entry *curr_node, *tmp = NULL;
 
 	res = mlx4_bitmap_alloc_range(zone->bitmap, count,
 				      align, skip_mask);
@@ -358,12 +358,14 @@ static u32 __mlx4_alloc_from_zone(struct mlx4_zone_entry *zone, int count,
 	}
 
 	list_for_each_entry(curr_node, &zone_alloc->prios, prio_list) {
-		if (unlikely(curr_node->priority == zone->priority))
+		if (unlikely(curr_node->priority == zone->priority)) {
+			tmp = curr_node;
 			break;
+		}
 	}
 
 	if (zone->flags & MLX4_ZONE_ALLOW_ALLOC_FROM_LOWER_PRIO) {
-		struct mlx4_zone_entry *it = curr_node;
+		struct mlx4_zone_entry *it = list_prepare_entry(tmp, &zone_alloc->entries, list);
 
 		list_for_each_entry_continue_reverse(it, &zone_alloc->entries, list) {
 			res = mlx4_bitmap_alloc_range(it->bitmap, count,
@@ -377,7 +379,7 @@ static u32 __mlx4_alloc_from_zone(struct mlx4_zone_entry *zone, int count,
 	}
 
 	if (zone->flags & MLX4_ZONE_ALLOW_ALLOC_FROM_EQ_PRIO) {
-		struct mlx4_zone_entry *it = curr_node;
+		struct mlx4_zone_entry *it = list_prepare_entry(tmp, &zone_alloc->entries, list);
 
 		list_for_each_entry_from(it, &zone_alloc->entries, list) {
 			if (unlikely(it == zone))
