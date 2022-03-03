@@ -3080,7 +3080,7 @@ static int devlink_dpipe_tables_fill(struct genl_info *info,
 				     const char *table_name)
 {
 	struct devlink *devlink = info->user_ptr[0];
-	struct devlink_dpipe_table *table;
+	struct devlink_dpipe_table *table, *tmp;
 	struct nlattr *tables_attr;
 	struct sk_buff *skb = NULL;
 	struct nlmsghdr *nlh;
@@ -3089,8 +3089,8 @@ static int devlink_dpipe_tables_fill(struct genl_info *info,
 	int i;
 	int err;
 
-	table = list_first_entry(dpipe_tables,
-				 struct devlink_dpipe_table, list);
+	tmp = list_first_entry(dpipe_tables,
+			       struct devlink_dpipe_table, list);
 start_again:
 	err = devlink_dpipe_send_and_alloc_skb(&skb, info);
 	if (err)
@@ -3111,6 +3111,8 @@ start_again:
 
 	i = 0;
 	incomplete = false;
+	table = list_prepare_entry(tmp, dpipe_tables, list);
+	tmp = NULL;
 	list_for_each_entry_from(table, dpipe_tables, list) {
 		if (!table_name) {
 			err = devlink_dpipe_table_put(skb, table);
@@ -3118,13 +3120,16 @@ start_again:
 				if (!i)
 					goto err_table_put;
 				incomplete = true;
+				tmp = table;
 				break;
 			}
 		} else {
 			if (!strcmp(table->name, table_name)) {
 				err = devlink_dpipe_table_put(skb, table);
-				if (err)
+				if (err) {
+					tmp = table;
 					break;
+				}
 			}
 		}
 		i++;
@@ -3814,7 +3819,7 @@ static int devlink_resource_fill(struct genl_info *info,
 				 enum devlink_command cmd, int flags)
 {
 	struct devlink *devlink = info->user_ptr[0];
-	struct devlink_resource *resource;
+	struct devlink_resource *resource, *tmp;
 	struct nlattr *resources_attr;
 	struct sk_buff *skb = NULL;
 	struct nlmsghdr *nlh;
@@ -3823,8 +3828,8 @@ static int devlink_resource_fill(struct genl_info *info,
 	int i;
 	int err;
 
-	resource = list_first_entry(&devlink->resource_list,
-				    struct devlink_resource, list);
+	tmp = list_first_entry(&devlink->resource_list,
+			       struct devlink_resource, list);
 start_again:
 	err = devlink_dpipe_send_and_alloc_skb(&skb, info);
 	if (err)
@@ -3847,12 +3852,15 @@ start_again:
 
 	incomplete = false;
 	i = 0;
+	resource = list_prepare_entry(tmp, &devlink->resource_list, list);
+	tmp = NULL;
 	list_for_each_entry_from(resource, &devlink->resource_list, list) {
 		err = devlink_resource_put(devlink, skb, resource);
 		if (err) {
 			if (!i)
 				goto err_resource_put;
 			incomplete = true;
+			tmp = resource;
 			break;
 		}
 		i++;
