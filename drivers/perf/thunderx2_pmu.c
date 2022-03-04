@@ -791,7 +791,7 @@ static struct tx2_uncore_pmu *tx2_uncore_pmu_init_dev(struct device *dev,
 	struct tx2_uncore_pmu *tx2_pmu;
 	void __iomem *base;
 	struct resource res;
-	struct resource_entry *rentry;
+	struct resource_entry *rentry = NULL, *iter;
 	struct list_head list;
 	int ret;
 
@@ -802,16 +802,16 @@ static struct tx2_uncore_pmu *tx2_uncore_pmu_init_dev(struct device *dev,
 		return NULL;
 	}
 
-	list_for_each_entry(rentry, &list, node) {
-		if (resource_type(rentry->res) == IORESOURCE_MEM) {
-			res = *rentry->res;
-			rentry = NULL;
+	list_for_each_entry(iter, &list, node) {
+		if (resource_type(iter->res) == IORESOURCE_MEM) {
+			res = *iter->res;
+			rentry = iter;
 			break;
 		}
 	}
 	acpi_dev_free_resource_list(&list);
 
-	if (rentry) {
+	if (!rentry) {
 		dev_err(dev, "PMU type %d: Fail to find resource\n", type);
 		return NULL;
 	}
